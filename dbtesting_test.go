@@ -253,3 +253,30 @@ func ExampleValueRecorder() {
 	// Output:
 	// got recorded value: 666
 }
+
+func ExampleValueRecorder_value() {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+	defer func() {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			fmt.Printf("there were unfulfilled expectations: %s", err)
+		}
+	}()
+	rec := dbtesting.NewValueRecorder()
+	mock.ExpectExec("INSERT INTO life .+").
+		WithArgs(rec.Record("meaning")).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	_, err = db.Exec("INSERT INTO life (name) VALUE ($1)", 42)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Meaning of life: %d", rec.Value("meaning").(int64))
+
+	// Output:
+	// Meaning of life: 42
+}

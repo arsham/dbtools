@@ -1,0 +1,17 @@
+language: go
+dist: xenial
+
+os:
+  - linux
+
+env:
+  - GO111MODULE=on
+
+go:
+  - 1.12.x
+
+script:
+  - go test -failfast -v -coverprofile=coverage.txt -covermode=atomic ./...
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
