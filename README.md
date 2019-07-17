@@ -1,19 +1,93 @@
-# dbtesting
+# dbtools
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GoDoc](https://godoc.org/github.com/arsham/dbtesting?status.svg)](http://godoc.org/github.com/arsham/dbtesting)
 [![Build Status](https://travis-ci.org/arsham/dbtesting.svg?branch=master)](https://travis-ci.org/arsham/dbtesting)
 [![Coverage Status](https://codecov.io/gh/arsham/dbtesting/branch/master/graph/badge.svg)](https://codecov.io/gh/arsham/dbtesting)
 
-This library has a few helpers for using in tests.
+This library has a few helpers for using in production code and
+[go-sqlmock][go-sqlmock] tests. There is also a `Mocha` inspired reporter for
+[spec BDD library][spec].
 
-1. [Spec Reports](#spec-reports)
+1. [Transaction](#transaction)
+    * [WithTransaction](#withtransaction)
+    * [Retry](#retry)
+    * [RetryTransaction](#retrytransaction)
+2. [Spec Reports](#spec-reports)
     * [Usage](#usage)
-2. [SQLMock Helpers](#sqlmock-helpers)
+3. [SQLMock Helpers](#sqlmock-helpers)
     * [ValueRecorder](#valuerecorder)
     * [OkValue](#okvalue)
-3. [Testing](#testing)
-4. [License](#license)
+4. [Testing](#testing)
+5. [License](#license)
+
+## Transaction
+
+### WithTransaction
+
+`WithTransaction` helps you reduce the amount of code you put in the logic by
+taking care of errors. For example instead of writing:
+
+```go
+tx, err := db.Begin()
+if err != nil {
+    return errors.Wrap(err, "starting transaction")
+}
+err := firstQueryCall(tx)
+if err != nil {
+    e := errors.Wrap(tx.Rollback(), "rolling back transaction")
+    return multierror.Append(err, e).ErrorOrNil()
+}
+err := secondQueryCall(tx)
+if err != nil {
+    e := errors.Wrap(tx.Rollback(), "rolling back transaction")
+    return multierror.Append(err, e).ErrorOrNil()
+}
+err := thirdQueryCall(tx)
+if err != nil {
+    e := errors.Wrap(tx.Rollback(), "rolling back transaction")
+    return multierror.Append(err, e).ErrorOrNil()
+}
+
+return errors.Wrap(tx.Commit(), "committing transaction")
+
+```
+
+You can write:
+```go
+return dbtools.WithTransaction(db, firstQueryCall, secondQueryCall, thirdQueryCall)
+```
+
+Function types should be of `func(*sql.Tx) error`.
+
+### Retry
+
+`Retry` calls your function, and if it errors it calls it again with a delay.
+Every time the function returns an error it increases the delay. Eventually it
+returns the last error or nil if one call is successful.
+
+You can use this function in non-database situations too.
+
+```go
+dbtools.Retry(10, time.Second. func(i int) error {
+    logger.Debugf("%d iteration", i)
+    return myFunctionCall()
+})
+```
+
+### RetryTransaction
+
+`RetryTransaction` is a combination of `WithTransaction` and `Retry`. It stops
+the retry if the context is cancelled/done.
+
+```go
+err := dbtools.RetryTransaction(ctx, db, 10, time.Millisecond * 10,
+    firstQueryCall,
+    secondQueryCall,
+    thirdQueryCall,
+)
+// error check
+```
 
 ## Spec Reports
 
@@ -23,7 +97,7 @@ This library has a few helpers for using in tests.
 ### Usage
 
 ```go
-import "github.com/arsham/dbtesting"
+import "github.com/arsham/dbtools/dbtesting"
 
 func TestFoo(t *testing.T) {
     spec.Run(t, "Foo", func(t *testing.T, when spec.G, it spec.S) {
@@ -70,7 +144,7 @@ func TestFoo(t *testing.T) {
 Your tests can be checked easily like this:
 ```go
 import (
-    "github.com/arsham/dbtesting"
+    "github.com/arsham/dbtools/dbtesting"
     "github.com/DATA-DOG/go-sqlmock"
 )
 
@@ -108,7 +182,7 @@ relevant to the current test), you can use `OkValue`.
 
 ```go
 import (
-    "github.com/arsham/dbtesting"
+    "github.com/arsham/dbtools/dbtesting"
     "github.com/DATA-DOG/go-sqlmock"
 )
 
@@ -132,15 +206,8 @@ To run the tests:
 ```bash
 make
 ```
-or for with `-race` flag:
-```bash
-make test_race
-```
-
-If you don't have `reflex` installed, run the following once:
-```bash
-make third-party
-```
+`test_race` target runs tests with `-race` flag. `third-party` installs
+[reflex][reflex] task runner.
 
 ## License
 
@@ -149,3 +216,4 @@ found in the [LICENSE](./LICENSE) file.
 
 [go-sqlmock]: https://github.com/DATA-DOG/go-sqlmock
 [spec]: https://github.com/sclevine/spec
+[reflex]: https://github.com/cespare/reflex

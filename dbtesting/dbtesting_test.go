@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/arsham/dbtesting"
+	"github.com/arsham/dbtools/dbtesting"
 )
 
 func TestOkValue(t *testing.T) {
@@ -55,11 +55,10 @@ func ExampleOkValue() {
 		WithArgs(dbtesting.OkValue).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	_, err = db.Exec("INSERT INTO life (name) VALUE ($1)", 666)
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println("Error:", err)
 
 	// Output:
+	// Error: <nil>
 }
 
 func TestValueRecorder(t *testing.T) {
@@ -236,21 +235,19 @@ func ExampleValueRecorder() {
 	// pretend the following query happens in another package and the argument is
 	// totally random.
 	_, err = db.Exec("INSERT INTO life (name) VALUE ($1)", 666)
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println("Error:", err)
 
 	// say we don't have access to the value and we don't know what value would be
 	// passed, but it is important the value is the same as the logic has to pass.
 
 	_, err = db.Exec("INSERT INTO reality (name) VALUE ($1)", 666)
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println("Error:", err)
 
 	fmt.Printf("got recorded value: %d", rec.Value("truth"))
 
 	// Output:
+	// Error: <nil>
+	// Error: <nil>
 	// got recorded value: 666
 }
 
@@ -271,12 +268,10 @@ func ExampleValueRecorder_value() {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	_, err = db.Exec("INSERT INTO life (name) VALUE ($1)", 42)
-	if err != nil {
-		panic(err)
-	}
-
+	fmt.Println("Error:", err)
 	fmt.Printf("Meaning of life: %d", rec.Value("meaning").(int64))
 
 	// Output:
+	// Error: <nil>
 	// Meaning of life: 42
 }

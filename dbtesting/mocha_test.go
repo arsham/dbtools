@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/arsham/dbtesting"
+	"github.com/arsham/dbtools/dbtesting"
 	"github.com/sclevine/spec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
