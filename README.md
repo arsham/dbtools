@@ -1,9 +1,9 @@
 # dbtools
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![GoDoc](https://godoc.org/github.com/arsham/dbtesting?status.svg)](http://godoc.org/github.com/arsham/dbtesting)
-[![Build Status](https://travis-ci.org/arsham/dbtesting.svg?branch=master)](https://travis-ci.org/arsham/dbtesting)
-[![Coverage Status](https://codecov.io/gh/arsham/dbtesting/branch/master/graph/badge.svg)](https://codecov.io/gh/arsham/dbtesting)
+[![GoDoc](https://godoc.org/github.com/arsham/dbtools?status.svg)](http://godoc.org/github.com/arsham/dbtools)
+[![Build Status](https://travis-ci.org/arsham/dbtools.svg?branch=master)](https://travis-ci.org/arsham/dbtools)
+[![Coverage Status](https://codecov.io/gh/arsham/dbtools/branch/master/graph/badge.svg)](https://codecov.io/gh/arsham/dbtools)
 
 This library has a few helpers for using in production code and
 [go-sqlmock][go-sqlmock] tests. There is also a `Mocha` inspired reporter for
