@@ -10,16 +10,26 @@ import (
 	"github.com/pkg/errors"
 )
 
+var errPanic = errors.New("function caused a panic")
+
 // WithTransaction creates a transaction on db and uses it to call fn functions
-// one by one. The first function that returns an error will cause the loop to
-// stop and transaction to be rolled back.
+// one by one. The first function that returns an error or panics will cause the
+// loop to stop and transaction to be rolled back.
 func WithTransaction(db *sql.DB, fn ...func(*sql.Tx) error) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return errors.Wrap(err, "starting transaction")
 	}
 	for _, f := range fn {
-		err := f(tx)
+		var err error
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Wrapf(errPanic, "%v", r)
+				}
+			}()
+			err = f(tx)
+		}()
 		if err != nil {
 			e := errors.Wrap(tx.Rollback(), "rolling back transaction")
 			return multierror.Append(err, e).ErrorOrNil()
@@ -29,12 +39,19 @@ func WithTransaction(db *sql.DB, fn ...func(*sql.Tx) error) error {
 }
 
 // Retry calls fn for retries times until it returns nil. If retries is zero fn
-// would not be called. It delays and retries if the function returns any
-// errors. The fn function receives the current iteration as its argument.
+// would not be called. It delays and retries if the function returns any errors
+// or panics. The fn function receives the current iteration as its argument.
 func Retry(retries int, delay time.Duration, fn func(int) error) error {
 	var err error
 	for i := 0; i < retries; i++ {
-		err = fn(i)
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Wrapf(errPanic, "%v", r)
+				}
+			}()
+			err = fn(i)
+		}()
 		switch err {
 		case io.EOF, nil:
 			return nil

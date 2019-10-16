@@ -9,6 +9,8 @@ This library has a few helpers for using in production code and
 [go-sqlmock][go-sqlmock] tests. There is also a `Mocha` inspired reporter for
 [spec BDD library][spec].
 
+This library supports Go 1.11 and above.
+
 1. [Transaction](#transaction)
     * [WithTransaction](#withtransaction)
     * [Retry](#retry)

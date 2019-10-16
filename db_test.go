@@ -20,6 +20,7 @@ func TestWithTransaction(t *testing.T) {
 	t.Run("RollbackFirst", testWithTransactionRollbackFirst)
 	t.Run("RollbackSecond", testWithTransactionRollbackSecond)
 	t.Run("Commit", testWithTransactionCommit)
+	t.Run("FunctionPanic", testWithTransactionFunctionPanic)
 }
 
 func testWithTransactionBeginCommit(t *testing.T) {
@@ -132,6 +133,29 @@ func testWithTransactionCommit(t *testing.T) {
 	assert.Equal(t, assert.AnError, errors.Cause(err))
 }
 
+func testWithTransactionFunctionPanic(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	defer func() {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	}()
+	mock.ExpectBegin()
+	mock.ExpectRollback()
+	require.NotPanics(t, func() {
+		err := dbtools.WithTransaction(db, func(*sql.Tx) error {
+			panic("for some reason")
+		}, func(*sql.Tx) error {
+			t.Error("didn't expect to be called")
+			return nil
+		})
+		assert.Error(t, err)
+	})
+}
+
 func ExampleWithTransaction() {
 	// For this example we are using sqlmock, but you can use an actual
 	// connection with this function.
@@ -198,6 +222,7 @@ func ExampleWithTransaction_two() {
 func TestRetry(t *testing.T) {
 	t.Run("Delay", testRetryDelay)
 	t.Run("Retries", testRetryRetries)
+	t.Run("FunctionPanic", testRetryFunctionPanic)
 }
 
 func testRetryDelay(t *testing.T) {
@@ -232,6 +257,20 @@ func testRetryRetries(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, 20, count)
+}
+
+func testRetryFunctionPanic(t *testing.T) {
+	t.Parallel()
+	retries := 100
+	count := 0
+	assert.NotPanics(t, func() {
+		err := dbtools.Retry(retries, time.Nanosecond, func(int) error {
+			count++
+			panic("for some reason")
+		})
+		assert.Error(t, err)
+	})
+	assert.Equal(t, retries, count)
 }
 
 func ExampleRetry() {
