@@ -20,7 +20,6 @@ var (
 // DB is the contract for beginning a transaction with a *sql.DB object.
 //go:generate mockery -name DB -filename db_mock.go
 type DB interface {
-	Begin() (Tx, error)
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error)
 }
 
@@ -29,7 +28,6 @@ type DB interface {
 //go:generate mockery -name Pool -filename pool_mock.go
 type Pool interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
-	BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx, error)
 }
 
 //nolint:unused // only used for mocking.
@@ -84,10 +82,6 @@ func DelayMethod(m retry.DelayMethod) ConfigFunc {
 
 type dbWrapper struct {
 	db *sql.DB
-}
-
-func (d *dbWrapper) Begin() (Tx, error) {
-	return d.db.Begin()
 }
 
 func (d *dbWrapper) BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error) {

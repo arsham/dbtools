@@ -39,6 +39,7 @@ func TestNewTransaction(t *testing.T) {
 		"pool":          {&mocks.Pool{}, nil, nil},
 		"sql.DB":        {db, nil, nil},
 		"low attempts":  {db, []dbtools.ConfigFunc{dbtools.RetryCount(-1)}, nil},
+		"delay method":  {db, []dbtools.ConfigFunc{dbtools.DelayMethod(retry.IncrementalDelay)}, nil},
 	}
 	for name, tc := range tcs {
 		tc := tc
@@ -60,7 +61,7 @@ func TestTransaction(t *testing.T) {
 
 func testTransactionPGX(t *testing.T) {
 	t.Run("NilDatabase", testTransactionPGXNilDatabase)
-	t.Run("BeingError", testTransactionPGXBeingError)
+	t.Run("BeginError", testTransactionPGXBeginError)
 	t.Run("CancelledContext", testTransactionPGXCancelledContext)
 	t.Run("Panic", testTransactionPGXPanic)
 	t.Run("AnError", testTransactionPGXAnError)
@@ -96,7 +97,7 @@ func testTransactionPGXNilDatabase(t *testing.T) {
 	assertInError(t, err, dbtools.ErrEmptyDatabase)
 }
 
-func testTransactionPGXBeingError(t *testing.T) {
+func testTransactionPGXBeginError(t *testing.T) {
 	t.Parallel()
 	db := &mocks.Pool{}
 	defer db.AssertExpectations(t)
@@ -451,7 +452,7 @@ func testTransactionPGXRealDatabase(t *testing.T) {
 
 func testTransactionDB(t *testing.T) {
 	t.Run("NilDatabase", testTransactionDBNilDatabase)
-	t.Run("BeingError", testTransactionDBBeingError)
+	t.Run("BeginError", testTransactionDBBeginError)
 	t.Run("CancelledContext", testTransactionDBCancelledContext)
 	t.Run("Panic", testTransactionDBPanic)
 	t.Run("AnError", testTransactionDBAnError)
@@ -487,7 +488,7 @@ func testTransactionDBNilDatabase(t *testing.T) {
 	assertInError(t, err, dbtools.ErrEmptyDatabase)
 }
 
-func testTransactionDBBeingError(t *testing.T) {
+func testTransactionDBBeginError(t *testing.T) {
 	t.Parallel()
 	db := &mocks.DB{}
 	defer db.AssertExpectations(t)

@@ -62,9 +62,6 @@ func NewTransaction(conn interface{}, conf ...ConfigFunc) (*Transaction, error) 
 	for _, fn := range conf {
 		fn(t)
 	}
-	if t.db == nil && t.pool == nil {
-		return nil, ErrEmptyDatabase
-	}
 	if t.retries < 1 {
 		t.retries = 1
 	}
