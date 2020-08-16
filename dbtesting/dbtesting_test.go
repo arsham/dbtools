@@ -18,6 +18,7 @@ func TestOkValue(t *testing.T) {
 		"byte slice": []byte("devil"),
 	}
 	for name, tc := range tcs {
+		tc := tc
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			if err != nil {

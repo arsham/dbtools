@@ -1,34 +1,34 @@
 # dbtools
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![GoDoc](https://godoc.org/github.com/arsham/dbtools?status.svg)](http://godoc.org/github.com/arsham/dbtools)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/arsham/dbtools)](https://pkg.go.dev/github.com/arsham/dbtools)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/arsham/dbtools)
 [![Build Status](https://travis-ci.org/arsham/dbtools.svg?branch=master)](https://travis-ci.org/arsham/dbtools)
 [![Coverage Status](https://codecov.io/gh/arsham/dbtools/branch/master/graph/badge.svg)](https://codecov.io/gh/arsham/dbtools)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-This library has a few helpers for using in production code and
-[go-sqlmock][go-sqlmock] tests. There is also a `Mocha` inspired reporter for
-[spec BDD library][spec].
+This library contains goroutine safe helpers for retrying transactions until
+they succeed and handles errors in a developer friendly way. There are helpers
+for using with [go-sqlmock][go-sqlmock] in tests. There is also a `Mocha`
+inspired reporter for [spec BDD library][spec].
 
-This library supports Go 1.11 and above.
+This library supports `Go >= 1.14`.
 
 1. [Transaction](#transaction)
-    * [WithTransaction](#withtransaction)
-    * [Retry](#retry)
-    * [RetryTransaction](#retrytransaction)
-2. [Spec Reports](#spec-reports)
-    * [Usage](#usage)
-3. [SQLMock Helpers](#sqlmock-helpers)
+    * [PGX Pool](#pgx-pool)
+    * [Standard Library](#standard-library)
+    * [Deprecation Notice](#deprecation-notice)
+2. [SQLMock Helpers](#sqlmock-helpers)
     * [ValueRecorder](#valuerecorder)
     * [OkValue](#okvalue)
-4. [Testing](#testing)
+3. [Spec Reports](#spec-reports)
+    * [Usage](#usage)
+4. [Development](#development)
 5. [License](#license)
 
 ## Transaction
 
-### WithTransaction
-
-`WithTransaction` helps you reduce the amount of code you put in the logic by
-taking care of errors. For example instead of writing:
+`Transaction` helps you reduce the amount of code you put in the logic by taking
+care of errors. For example instead of writing:
 
 ```go
 tx, err := db.Begin()
@@ -55,62 +55,79 @@ return errors.Wrap(tx.Commit(), "committing transaction")
 
 ```
 
-You can write:
+You will write:
+
 ```go
-return dbtools.WithTransaction(db, firstQueryCall, secondQueryCall, thirdQueryCall)
+// for using with pgx connections:
+tr, err := dbtools.NewTransaction(conn)
+// handle error, and reuse tr
+return tr.PGX(ctx, firstQueryCall, secondQueryCall, thirdQueryCall)
+
+// or to use with stdlib sql.DB:
+tr, err := dbtools.NewTransaction(conn)
+// handle error, and reuse tr
+return tr.DB(ctx, firstQueryCall, secondQueryCall, thirdQueryCall)
 ```
 
-Function types should be of `func(*sql.Tx) error`.
+At any point a transaction function returns an error, the whole transaction is
+started over.
 
-### Retry
+You may set the retry count, delays, and the delay method by passing
+`dbtools.ConfigFunc` functions to the constructor. If you don't pass any
+config, `PGX` and `DB` methods will run only once.
 
-`Retry` calls your function, and if it errors it calls it again with a delay.
-Every time the function returns an error it increases the delay. Eventually it
-returns the last error or nil if one call is successful.
-
-You can use this function in non-database situations too.
+You can prematurely stop retrying by returning a `retry.StopError` error:
 
 ```go
-dbtools.Retry(10, time.Second. func(i int) error {
-    logger.Debugf("%d iteration", i)
-    return myFunctionCall()
+err = tr.PGX(ctx, func(tx pgx.Tx) error {
+    _, err := tx.Exec(ctx, query)
+    return retry.StopError{Err: err}
 })
 ```
 
-### RetryTransaction
+See [retry][retry] library for more information.
 
-`RetryTransaction` is a combination of `WithTransaction` and `Retry`. It stops
-the retry if the context is cancelled/done.
+### PGX Pool
 
-```go
-err := dbtools.RetryTransaction(ctx, db, 10, time.Millisecond * 10,
-    firstQueryCall,
-    secondQueryCall,
-    thirdQueryCall,
-)
-// error check
-```
-
-## Spec Reports
-
-`Mocha` is a reporter for printing Mocha inspired reports when using
-[spec BDD library][spec].
-
-### Usage
+Your transaction functions should be of `func(pgx.Tx) error` type. To try up to
+20 time until your queries succeed:
 
 ```go
-import "github.com/arsham/dbtools/dbtesting"
-
-func TestFoo(t *testing.T) {
-    spec.Run(t, "Foo", func(t *testing.T, when spec.G, it spec.S) {
-        // ...
-    }, spec.Report(&dbtesting.Mocha{}))
-}
-
+// conn is a *sql.DB instance
+tr, err := dbtools.NewTransaction(conn, dbtools.Retry(20))
+// handle error
+err = tr.PGX(ctx, func(tx pgx.Tx) error {
+    // use tx to run your queries
+    return err
+}, func(tx pgx.Tx) error {
+    return err
+})
+// handle error
 ```
 
-You can set an `io.Writer` to `Mocha.Out` to redirect the output, otherwise it
-prints to the `os.Stdout`.
+### Standard Library
+
+Your transaction functions should be of `func(dbtools.Tx) error` type. To try up to
+20 time until your queries succeed:
+
+```go
+// conn is a *pgxpool.Pool instance
+tr, err := dbtools.NewTransaction(conn, dbtools.Retry(20))
+// handle error
+err = tr.DB(ctx, func(tx dbtools.Tx) error {
+    // use tx to run your queries
+    return err
+}, func(tx dbtools.Tx) error {
+    return err
+})
+// handle error
+```
+
+### Deprecation Notice
+
+`WithTransaction` and `RetryTransaction` functions are deprecated. Please use
+`Transaction` instead. `Retry` function is also deprecated in favour of the
+[retry][retry] library.
 
 ## SQLMock Helpers
 
@@ -201,21 +218,57 @@ mock.ExpectExec("INSERT INTO life .+").
     )
 ```
 
-## Testing
+## Spec Reports
 
-To run the tests:
+`Mocha` is a reporter for printing Mocha inspired reports when using
+[spec BDD library][spec].
+
+### Usage
+
+```go
+import "github.com/arsham/dbtools/dbtesting"
+
+func TestFoo(t *testing.T) {
+    spec.Run(t, "Foo", func(t *testing.T, when spec.G, it spec.S) {
+        // ...
+    }, spec.Report(&dbtesting.Mocha{}))
+}
+
+```
+
+You can set an `io.Writer` to `Mocha.Out` to redirect the output, otherwise it
+prints to the `os.Stdout`.
+
+
+## Development
+
+Run the `tests` target for watching file changes and running tests:
 
 ```bash
-make
+make tests
 ```
-`test_race` target runs tests with `-race` flag. `third-party` installs
-[reflex][reflex] task runner.
+
+You can pass flags as such:
+
+
+```bash
+make tests flags="-race -v -count=5"
+```
+
+You need to run the `dependencies` target for installing [reflex][reflex] task
+runner:
+
+```bash
+make dependencies
+```
 
 ## License
 
 Use of this source code is governed by the Apache 2.0 license. License can be
 found in the [LICENSE](./LICENSE) file.
 
+[retry]: https://github.com/arsham/retry
+[pgx]: https://github.com/jackc/pgx
 [go-sqlmock]: https://github.com/DATA-DOG/go-sqlmock
 [spec]: https://github.com/sclevine/spec
 [reflex]: https://github.com/cespare/reflex

@@ -74,6 +74,7 @@ func testTerminalStartBuffer(t *testing.T) {
 		},
 	}
 	for name, tc := range tcs {
+		tc := tc
 		t.Run(name, func(t *testing.T) {
 			buf := &bytes.Buffer{}
 			m := &dbtesting.Mocha{
@@ -122,6 +123,7 @@ func testTerminalSpecs(t *testing.T) {
 		"skipped": "skipped: 4",
 	}
 	for name, tc := range tcs {
+		tc := tc
 		t.Run(name, func(t *testing.T) {
 			assert.Contains(t, content, tc)
 		})
