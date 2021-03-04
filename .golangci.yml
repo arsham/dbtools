@@ -66,6 +66,7 @@ linters:
     - dogsled
     - depguard
     - dupl
+    - errorlint
     - gocognit
     - goconst
     - gocritic
@@ -90,10 +91,13 @@ linters:
     - unparam
     - unused
     - whitespace
+    - wrapcheck
+    - tparallel
+
 
 # golangci.com configuration
 # https://github.com/golangci/golangci/wiki/Configuration
 service:
-  golangci-lint-version: 1.30.x
+  golangci-lint-version: 1.37.x
   prepare:
     - echo "here I can run custom commands, but no preparation needed for this repo"

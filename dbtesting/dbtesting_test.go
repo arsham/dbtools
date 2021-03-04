@@ -20,6 +20,7 @@ func TestOkValue(t *testing.T) {
 	for name, tc := range tcs {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			db, mock, err := sqlmock.New()
 			if err != nil {
 				t.Fatalf("got %v, want nil", err)
@@ -63,6 +64,7 @@ func ExampleOkValue() {
 }
 
 func TestValueRecorder(t *testing.T) {
+	t.Parallel()
 	t.Run("Record", testValueRecorderRecord)
 	t.Run("RecordPanic", testValueRecorderRecordPanic)
 	t.Run("For", testValueRecorderFor)

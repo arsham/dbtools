@@ -9,8 +9,8 @@ env:
   - GO111MODULE=on
 
 go:
-  - 1.14.x
   - 1.15.x
+  - 1.16.x
   - tip
 
 matrix:
@@ -18,7 +18,7 @@ matrix:
     - go: tip
 
 before_install:
-  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.30.0
+  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.37.1
 
 script:
    - make ci_tests

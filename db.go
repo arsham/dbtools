@@ -3,7 +3,6 @@ package dbtools
 import (
 	"context"
 	"database/sql"
-	"io"
 	"time"
 
 	"github.com/arsham/retry"
@@ -87,7 +86,7 @@ func (t *Transaction) PGX(ctx context.Context, transactions ...func(pgx.Tx) erro
 			select {
 			case <-ctx.Done():
 				e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
-				return retry.StopError{
+				return &retry.StopError{
 					Err: multierror.Append(ctx.Err(), e).ErrorOrNil(),
 				}
 			default:
@@ -104,8 +103,12 @@ func (t *Transaction) PGX(ctx context.Context, transactions ...func(pgx.Tx) erro
 			if err != nil {
 				e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
 				e = multierror.Append(err, e).ErrorOrNil()
-				if _, ok := err.(retry.StopError); ok {
-					e = retry.StopError{Err: e}
+				var (
+					v1 retry.StopError
+					v2 *retry.StopError
+				)
+				if errors.As(err, &v1) || errors.As(err, &v2) {
+					e = &retry.StopError{Err: e}
 				}
 				return e
 			}
@@ -128,7 +131,7 @@ func (t *Transaction) DB(ctx context.Context, transactions ...func(Tx) error) er
 			select {
 			case <-ctx.Done():
 				e := errors.Wrap(tx.Rollback(), "rolling back transaction")
-				return retry.StopError{
+				return &retry.StopError{
 					Err: multierror.Append(ctx.Err(), e).ErrorOrNil(),
 				}
 			default:
@@ -145,82 +148,16 @@ func (t *Transaction) DB(ctx context.Context, transactions ...func(Tx) error) er
 			if err != nil {
 				e := errors.Wrap(tx.Rollback(), "rolling back transaction")
 				e = multierror.Append(err, e).ErrorOrNil()
-				if _, ok := err.(retry.StopError); ok {
-					e = retry.StopError{Err: e}
+				var (
+					v1 retry.StopError
+					v2 *retry.StopError
+				)
+				if errors.As(err, &v1) || errors.As(err, &v2) {
+					e = &retry.StopError{Err: e}
 				}
 				return e
 			}
 		}
 		return errors.Wrap(tx.Commit(), "committing transaction")
-	})
-}
-
-// WithTransaction creates a transaction on db and uses it to call fn functions
-// one by one. The first function that returns an error or panics will cause the
-// loop to stop and transaction to be rolled back.
-// Deprecated: use Transaction instead.
-func WithTransaction(db *sql.DB, fn ...func(*sql.Tx) error) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return errors.Wrap(err, "starting transaction")
-	}
-	for _, f := range fn {
-		var err error
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					err = errors.Wrapf(errPanic, "%v", r)
-				}
-			}()
-			err = f(tx)
-		}()
-		if err != nil {
-			e := errors.Wrap(tx.Rollback(), "rolling back transaction")
-			return multierror.Append(err, e).ErrorOrNil()
-		}
-	}
-	return errors.Wrap(tx.Commit(), "committing transaction")
-}
-
-// Retry calls fn for retries times until it returns nil. If retries is zero fn
-// would not be called. It delays and retries if the function returns any errors
-// or panics. The fn function receives the current iteration as its argument.
-// Deprecated: use http://github.com/arsham/retry library instead.
-func Retry(retries int, delay time.Duration, fn func(int) error) error {
-	var err error
-	for i := 0; i < retries; i++ {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					err = errors.Wrapf(errPanic, "%v", r)
-				}
-			}()
-			err = fn(i)
-		}()
-		switch err {
-		case io.EOF, nil:
-			return nil
-		}
-		time.Sleep(delay * time.Duration(i+1))
-	}
-	return err
-}
-
-// RetryTransaction combines WithTransaction and Retry calls. It stops the call
-// if context is times out or cancelled.
-// Deprecated: use Transaction instead.
-func RetryTransaction(ctx context.Context, db *sql.DB, retries int, delay time.Duration, fn ...func(*sql.Tx) error) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	return Retry(retries, delay, func(int) error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-		return WithTransaction(db, fn...)
 	})
 }

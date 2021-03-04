@@ -90,7 +90,7 @@ func ExampleTransaction_PGX_stopTrying() {
 		return nil
 	}, func(pgx.Tx) error {
 		fmt.Println("Running second query.")
-		return retry.StopError{Err: assert.AnError}
+		return &retry.StopError{Err: assert.AnError}
 	})
 	fmt.Printf("Transaction returns my error: %t", strings.Contains(err.Error(), assert.AnError.Error()))
 

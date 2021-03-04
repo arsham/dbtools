@@ -15,6 +15,7 @@ import (
 )
 
 func TestTerminal(t *testing.T) {
+	t.Parallel()
 	t.Run("Start", testTerminalStart)
 	t.Run("Specs", testTerminalSpecs)
 }

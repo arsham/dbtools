@@ -5,13 +5,14 @@
 [![Build Status](https://travis-ci.org/arsham/dbtools.svg?branch=master)](https://travis-ci.org/arsham/dbtools)
 [![Coverage Status](https://codecov.io/gh/arsham/dbtools/branch/master/graph/badge.svg)](https://codecov.io/gh/arsham/dbtools)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Go Report Card](https://goreportcard.com/badge/github.com/arsham/dbtools)](https://goreportcard.com/report/github.com/arsham/dbtools)
 
 This library contains goroutine safe helpers for retrying transactions until
 they succeed and handles errors in a developer friendly way. There are helpers
 for using with [go-sqlmock][go-sqlmock] in tests. There is also a `Mocha`
 inspired reporter for [spec BDD library][spec].
 
-This library supports `Go >= 1.14`.
+This library supports `Go >= 1.15`.
 
 1. [Transaction](#transaction)
     * [PGX Pool](#pgx-pool)

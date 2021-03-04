@@ -30,9 +30,6 @@ func assertInError(t *testing.T, haystack, needle error) bool {
 		t.Errorf("want %v in %v", needle, haystack)
 		return false
 	}
-	if errors.Cause(haystack) == needle {
-		return true
-	}
 	if errors.Is(haystack, needle) {
 		return true
 	}
@@ -41,12 +38,12 @@ func assertInError(t *testing.T, haystack, needle error) bool {
 			"want\n\t%v\nin\n\t%v", needle, haystack,
 		)
 	}
-	merr, ok := errors.Cause(haystack).(*multierror.Error)
-	if !ok {
+	var merr *multierror.Error
+	if !errors.As(haystack, &merr) {
 		return contains()
 	}
 	for _, err := range merr.Errors {
-		if errors.Cause(err) == needle {
+		if errors.Is(needle, err) {
 			return true
 		}
 	}
