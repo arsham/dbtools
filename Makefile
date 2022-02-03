@@ -14,24 +14,24 @@ tests: ## Run unit tests in watch mode. You can set: [run, timeout, short, dir, 
 	@-zsh -c "go test -trimpath --timeout=$(timeout) $(short) $(dir) -run $(run) $(flags); repeat 100 printf '#'; echo"
 	@reflex -d none -r "(\.go$$)|(go.mod)" -- zsh -c "go test -trimpath --timeout=$(timeout) $(short) $(dir) -run $(run) $(flags); repeat 100 printf '#'"
 
+.PHONY: lint
+lint: ## Run linters.
+	go fmt ./...
+	go vet ./...
+	golangci-lint run ./...
 
 .PHONY: dependencies
 dependencies: ## Install dependencies requried for development operations.
 	@go get -u github.com/cespare/reflex
-	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.37.1
+	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.0
 	@go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 	@go get github.com/stretchr/testify/mock
 	@go get github.com/vektra/mockery/.../
 	@go mod tidy
 
-
 .PHONY: ci_tests
 ci_tests: ## Run tests for CI.
-	go fmt ./...
-	go vet ./...
-	golangci-lint run ./...
 	go test -trimpath --timeout=10m -failfast -v -race -covermode=atomic -coverprofile=coverage.out ./...
-
 
 .PHONY: changelog
 changelog: ## Update the changelog.

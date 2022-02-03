@@ -32,12 +32,12 @@ import (
 // It's an error to invoke the methods without their respective connections are
 // set.
 type Transaction struct {
-	loop    retry.Retry
-	delay   time.Duration
-	retries int
 	method  retry.DelayMethod
 	db      DB
 	pool    Pool
+	loop    retry.Retry
+	delay   time.Duration
+	retries int
 }
 
 // NewTransaction returns an error if conn is not a DB, Pool, or *sql.DB

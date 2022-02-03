@@ -30,7 +30,7 @@ type Pool interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
-//nolint:unused // only used for mocking.
+// nolint:unused,deadcode // only used for mocking.
 //go:generate mockery --name pgxTx --filename pgx_tx_mock.go --structname PGXTx
 type pgxTx interface {
 	pgx.Tx
@@ -85,5 +85,6 @@ type dbWrapper struct {
 }
 
 func (d *dbWrapper) BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error) {
+	// nolint:wrapcheck // it's a relay.
 	return d.db.BeginTx(ctx, opts)
 }

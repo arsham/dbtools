@@ -13,8 +13,8 @@ import (
 
 // Mocha prints spec reports in terminal.
 type Mocha struct {
-	once sync.Once
 	Out  io.Writer // if not set it will print to stdout
+	once sync.Once
 }
 
 func (m *Mocha) setup() {

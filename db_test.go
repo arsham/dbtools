@@ -899,6 +899,7 @@ func testTransactionDBRealDatabase(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		defer rows.Close()
 		for rows.Next() {
 			var got string
 			err := rows.Scan(&got)
