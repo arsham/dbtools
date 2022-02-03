@@ -7,7 +7,6 @@ short="-short"
 flags=""
 timeout=40s
 
-
 .PHONY: tests
 tests: ## Run unit tests in watch mode. You can set: [run, timeout, short, dir, flags]. Example: make tests flags="-race".
 	@echo "running tests on $(run). waiting for changes..."
@@ -33,28 +32,14 @@ dependencies: ## Install dependencies requried for development operations.
 ci_tests: ## Run tests for CI.
 	go test -trimpath --timeout=10m -failfast -v -race -covermode=atomic -coverprofile=coverage.out ./...
 
-.PHONY: changelog
-changelog: ## Update the changelog.
-	@git-chglog > CHANGELOG.md
-	@echo "Changelog has been updated."
-
-
-.PHONY: changelog_release
-changelog_release: ## Update the changelog with a release tag.
-	@git-chglog --next-tag $(tag) > CHANGELOG.md
-	@echo "Changelog has been updated."
-
-
 .PHONY: clean
 clean: ## Clean test caches and tidy up modules.
 	@go clean -testcache
 	@go mod tidy
 
-
 .PHONY: mocks
 mocks: ## Generate mocks in all packages.
 	@go generate ./...
-
 
 .PHONY: coverage
 coverage: ## Show the test coverage on browser.
