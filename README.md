@@ -12,17 +12,16 @@ they succeed and handles errors in a developer friendly way. There are helpers
 for using with [go-sqlmock][go-sqlmock] in tests. There is also a `Mocha`
 inspired reporter for [spec BDD library][spec].
 
-This library supports `Go >= 1.15`.
+This library supports `Go >= 1.17`.
 
 1. [Transaction](#transaction)
-    * [PGX Pool](#pgx-pool)
-    * [Standard Library](#standard-library)
-    * [Deprecation Notice](#deprecation-notice)
+   - [PGX Pool](#pgx-pool)
+   - [Standard Library](#standard-library)
 2. [SQLMock Helpers](#sqlmock-helpers)
-    * [ValueRecorder](#valuerecorder)
-    * [OkValue](#okvalue)
+   - [ValueRecorder](#valuerecorder)
+   - [OkValue](#okvalue)
 3. [Spec Reports](#spec-reports)
-    * [Usage](#usage)
+   - [Usage](#usage)
 4. [Development](#development)
 5. [License](#license)
 
@@ -124,12 +123,6 @@ err = tr.DB(ctx, func(tx dbtools.Tx) error {
 // handle error
 ```
 
-### Deprecation Notice
-
-`WithTransaction` and `RetryTransaction` functions are deprecated. Please use
-`Transaction` instead. `Retry` function is also deprecated in favour of the
-[retry][retry] library.
-
 ## SQLMock Helpers
 
 There a couple of helpers for using with [go-sqlmock][go-sqlmock] test cases for
@@ -162,6 +155,7 @@ func TestFoo(t *testing.T) {
 ```
 
 Your tests can be checked easily like this:
+
 ```go
 import (
     "github.com/arsham/dbtools/dbtesting"
@@ -184,11 +178,13 @@ func TestFoo(t *testing.T) {
 ```
 
 Recorded values can be retrieved by casting to their types:
+
 ```go
 rec.Value("true").(string)
 ```
 
 There are two rules for using the `ValueRecorder`:
+
 1. You can only record for a value once.
 2. You should record a value before you call `For` or `Value`.
 
@@ -240,7 +236,6 @@ func TestFoo(t *testing.T) {
 You can set an `io.Writer` to `Mocha.Out` to redirect the output, otherwise it
 prints to the `os.Stdout`.
 
-
 ## Development
 
 Run the `tests` target for watching file changes and running tests:
@@ -250,7 +245,6 @@ make tests
 ```
 
 You can pass flags as such:
-
 
 ```bash
 make tests flags="-race -v -count=5"
@@ -273,3 +267,7 @@ found in the [LICENSE](./LICENSE) file.
 [go-sqlmock]: https://github.com/DATA-DOG/go-sqlmock
 [spec]: https://github.com/sclevine/spec
 [reflex]: https://github.com/cespare/reflex
+
+<!--
+vim: foldlevel=1
+-->

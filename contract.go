@@ -18,26 +18,26 @@ var (
 )
 
 // DB is the contract for beginning a transaction with a *sql.DB object.
-//go:generate mockery -name DB -filename db_mock.go
+//go:generate mockery --name DB --filename db_mock.go
 type DB interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error)
 }
 
 // Pool is the contract for beginning a transaction with a pgxpool db
 // connection.
-//go:generate mockery -name Pool -filename pool_mock.go
+//go:generate mockery --name Pool --filename pool_mock.go
 type Pool interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 //nolint:unused // only used for mocking.
-//go:generate mockery -name pgxTx -filename pgx_tx_mock.go -structname PGXTx
+//go:generate mockery --name pgxTx --filename pgx_tx_mock.go --structname PGXTx
 type pgxTx interface {
 	pgx.Tx
 }
 
 // Tx is a transaction began with sql.DB.
-//go:generate mockery -name Tx -filename tx_mock.go
+//go:generate mockery --name Tx --filename tx_mock.go
 type Tx interface {
 	Commit() error
 	Exec(query string, args ...interface{}) (sql.Result, error)
