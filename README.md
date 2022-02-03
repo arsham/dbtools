@@ -2,7 +2,7 @@
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/arsham/dbtools)](https://pkg.go.dev/github.com/arsham/dbtools)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/arsham/dbtools)
-[![Build Status](https://travis-ci.org/arsham/dbtools.svg?branch=master)](https://travis-ci.org/arsham/dbtools)
+[![Build Status](https://github.com/arsham/dbtools/actions/workflows/go.yml/badge.svg)](https://github.com/arsham/dbtools/actions/workflows/go.yml)
 [![Coverage Status](https://codecov.io/gh/arsham/dbtools/branch/master/graph/badge.svg)](https://codecov.io/gh/arsham/dbtools)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/arsham/dbtools)](https://goreportcard.com/report/github.com/arsham/dbtools)
