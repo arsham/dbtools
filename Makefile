@@ -22,8 +22,7 @@ lint: ## Run linters.
 .PHONY: dependencies
 dependencies: ## Install dependencies requried for development operations.
 	@go get -u github.com/cespare/reflex
-	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.0
-	@go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.2
 	@go get github.com/stretchr/testify/mock
 	@go get github.com/vektra/mockery/.../
 	@go mod tidy
