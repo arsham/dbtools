@@ -9,6 +9,7 @@ on:
       - feature/*
       - bugfix/*
       - refactor/*
+      - chore/*
 
 jobs:
   test:

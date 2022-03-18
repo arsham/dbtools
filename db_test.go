@@ -66,6 +66,7 @@ func testTransactionPGX(t *testing.T) {
 	t.Run("CancelledContext", testTransactionPGXCancelledContext)
 	t.Run("Panic", testTransactionPGXPanic)
 	t.Run("AnError", testTransactionPGXAnError)
+	t.Run("ErrorIs", testTransactionPGXErrorIs)
 	t.Run("RollbackError", testTransactionPGXRollbackError)
 	t.Run("CommitError", testTransactionPGXCommitError)
 	t.Run("ShortStop", testTransactionPGXShortStop)
@@ -244,6 +245,28 @@ func testTransactionPGXAnError(t *testing.T) {
 	})
 	assertInError(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
+}
+
+func testTransactionPGXErrorIs(t *testing.T) {
+	t.Parallel()
+	db := &mocks.Pool{}
+	defer db.AssertExpectations(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	tr, err := dbtools.NewTransaction(db, dbtools.RetryCount(1))
+	require.NoError(t, err)
+
+	tx := &mocks.PGXTx{}
+	defer tx.AssertExpectations(t)
+
+	db.On("Begin", mock.Anything).Return(tx, nil)
+	tx.On("Rollback", mock.Anything).Return(nil).Maybe()
+
+	err = tr.PGX(ctx, func(pgx.Tx) error {
+		return &retry.StopError{Err: assert.AnError}
+	})
+	assert.True(t, errors.Is(err, assert.AnError))
 }
 
 func testTransactionPGXRollbackError(t *testing.T) {
