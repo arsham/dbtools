@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/arsham/retry v0.5.0
+	github.com/arsham/retry v0.5.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jackc/pgconn v1.11.0
 	github.com/jackc/pgx/v4 v4.15.0
@@ -52,7 +52,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
-	golang.org/x/sys v0.0.0-20220318055525-2edf467146b5 // indirect
+	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20220317150908-0efb43f6373e // indirect
 	google.golang.org/grpc v1.45.0 // indirect

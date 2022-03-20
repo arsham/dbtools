@@ -3,6 +3,7 @@ package dbtools
 import (
 	"context"
 	"database/sql"
+	"runtime/debug"
 	"time"
 
 	"github.com/arsham/retry"
@@ -95,22 +96,14 @@ func (t *Transaction) PGX(ctx context.Context, transactions ...func(pgx.Tx) erro
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						err = errors.Wrapf(errPanic, "%v", r)
+						err = errors.Wrapf(errPanic, "%v\n%s", r, debug.Stack())
 					}
 				}()
 				err = fn(tx)
 			}()
 			if err != nil {
 				e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
-				e = multierror.Append(err, e).ErrorOrNil()
-				var (
-					v1 retry.StopError
-					v2 *retry.StopError
-				)
-				if errors.As(err, &v1) || errors.As(err, &v2) {
-					e = &retry.StopError{Err: e}
-				}
-				return e
+				return multierror.Append(err, e)
 			}
 		}
 		return errors.Wrap(tx.Commit(ctx), "committing transaction")
@@ -140,22 +133,14 @@ func (t *Transaction) DB(ctx context.Context, transactions ...func(Tx) error) er
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						err = errors.Wrapf(errPanic, "%v", r)
+						err = errors.Wrapf(errPanic, "%v\n%s", r, debug.Stack())
 					}
 				}()
 				err = fn(tx)
 			}()
 			if err != nil {
 				e := errors.Wrap(tx.Rollback(), "rolling back transaction")
-				e = multierror.Append(err, e).ErrorOrNil()
-				var (
-					v1 retry.StopError
-					v2 *retry.StopError
-				)
-				if errors.As(err, &v1) || errors.As(err, &v2) {
-					e = &retry.StopError{Err: e}
-				}
-				return e
+				return multierror.Append(err, e)
 			}
 		}
 		return errors.Wrap(tx.Commit(), "committing transaction")
