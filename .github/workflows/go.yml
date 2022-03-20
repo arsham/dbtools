@@ -2,7 +2,10 @@ name: Continues Integration
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - feature/*
+      - bugfix/*
   pull_request:
     branches:
       - master
@@ -47,9 +50,25 @@ jobs:
           flags: unittests
           name: codecov-umbrella
 
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: WriteGoList
+        run: go list -json -deps > go.list
+
+      - name: Nancy
+        uses: sonatype-nexus-community/nancy-github-action@main
+
   lint:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
