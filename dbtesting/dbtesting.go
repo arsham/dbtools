@@ -1,3 +1,4 @@
+// Package dbtesting provides handy tools for using with databases.
 package dbtesting
 
 import (

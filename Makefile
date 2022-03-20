@@ -29,10 +29,10 @@ ci_tests: ## Run tests for CI.
 
 .PHONY: dependencies
 dependencies: ## Install dependencies requried for development operations.
-	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.2
 	@go install github.com/cespare/reflex@latest
 	@go get github.com/stretchr/testify/mock
 	@go get github.com/vektra/mockery/.../
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.0
 	@go mod tidy
 
 .PHONY: clean

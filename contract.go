@@ -1,3 +1,5 @@
+// Package dbtools contains logic for database transaction, using the retry
+// library.
 package dbtools
 
 import (
