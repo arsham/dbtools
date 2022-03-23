@@ -38,6 +38,7 @@ func TestNewTransaction(t *testing.T) {
 		"sql.DB":        {db, nil, nil},
 		"low attempts":  {db, []dbtools.ConfigFunc{dbtools.RetryCount(-1)}, nil},
 		"delay method":  {db, []dbtools.ConfigFunc{dbtools.DelayMethod(retry.IncrementalDelay)}, nil},
+		"retrier":       {db, []dbtools.ConfigFunc{dbtools.Retry(retry.Retry{})}, nil},
 	}
 	for name, tc := range tcs {
 		tc := tc

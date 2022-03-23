@@ -58,6 +58,15 @@ type Tx interface {
 // A ConfigFunc function sets up a Transaction.
 type ConfigFunc func(*Transaction)
 
+// Retry sets the retrier.
+func Retry(r retry.Retry) ConfigFunc {
+	return func(t *Transaction) {
+		t.retries = r.Attempts
+		t.delay = r.Delay
+		t.method = r.Method
+	}
+}
+
 // RetryCount defines a transaction should be tried n times. If n is 0, it will
 // be set as 1.
 func RetryCount(n int) ConfigFunc {
