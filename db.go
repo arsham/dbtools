@@ -101,6 +101,10 @@ func (t *Transaction) PGX(ctx context.Context, transactions ...func(pgx.Tx) erro
 				}()
 				err = fn(tx)
 			}()
+			if errors.Is(err, context.Canceled) {
+				err = &retry.StopError{Err: err}
+				ctx = context.Background()
+			}
 			if err != nil {
 				e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
 				return multierror.Append(err, e)
@@ -138,6 +142,10 @@ func (t *Transaction) DB(ctx context.Context, transactions ...func(Tx) error) er
 				}()
 				err = fn(tx)
 			}()
+			if errors.Is(err, context.Canceled) {
+				err = &retry.StopError{Err: err}
+				ctx = context.Background()
+			}
 			if err != nil {
 				e := errors.Wrap(tx.Rollback(), "rolling back transaction")
 				return multierror.Append(err, e)

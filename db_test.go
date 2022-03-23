@@ -73,6 +73,7 @@ func testTransactionPGX(t *testing.T) {
 	t.Run("RetrySuccess", testTransactionPGXRetrySuccess)
 	t.Run("MultipleFunctions", testTransactionPGXMultipleFunctions)
 	t.Run("RealDatabase", testTransactionPGXRealDatabase)
+	t.Run("ContextCancelled", testTransactionPGXContextCancelled)
 }
 
 func testTransactionPGXNilDatabase(t *testing.T) {
@@ -510,6 +511,43 @@ func testTransactionPGXRealDatabase(t *testing.T) {
 	assert.ElementsMatch(t, names, gotNames)
 }
 
+func testTransactionPGXContextCancelled(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("slow test")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	addr := getDB(t)
+	config, err := pgxpool.ParseConfig(addr)
+	require.NoError(t, err)
+	db, err := pgxpool.ConnectConfig(ctx, config)
+	require.NoError(t, err)
+
+	tr, err := dbtools.NewTransaction(db, dbtools.RetryCount(10))
+	require.NoError(t, err)
+
+	calls := 0
+	// we are not using the same context to make sure the query causes the
+	// error.
+	err = tr.PGX(ctx, func(tx pgx.Tx) error {
+		calls++
+		query := `CREATE TABLE dbtest (name VARCHAR(100))`
+		_, err := tx.Exec(ctx, query)
+		return err
+	}, func(tx pgx.Tx) error {
+		cancel()
+		query := `INSERT INTO dbtest (name) VALUES ('a')`
+		_, err := tx.Exec(ctx, query)
+		return err
+	}, func(pgx.Tx) error {
+		t.Error("didn't expect to get this")
+		return nil
+	})
+	assertInError(t, err, context.Canceled)
+	assert.Equal(t, 1, calls)
+}
+
 func testTransactionDB(t *testing.T) {
 	t.Run("NilDatabase", testTransactionDBNilDatabase)
 	t.Run("BeginError", testTransactionDBBeginError)
@@ -522,6 +560,7 @@ func testTransactionDB(t *testing.T) {
 	t.Run("RetrySuccess", testTransactionDBRetrySuccess)
 	t.Run("MultipleFunctions", testTransactionDBMultipleFunctions)
 	t.Run("RealDatabase", testTransactionDBRealDatabase)
+	t.Run("ContextCancelled", testTransactionDBContextCancelled)
 }
 
 func testTransactionDBNilDatabase(t *testing.T) {
@@ -935,4 +974,40 @@ func testTransactionDBRealDatabase(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.ElementsMatch(t, names, gotNames)
+}
+
+func testTransactionDBContextCancelled(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("slow test")
+	}
+	addr := getDB(t)
+	config, err := pgx.ParseConfig(addr)
+	require.NoError(t, err)
+	db := stdlib.OpenDB(*config)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	tr, err := dbtools.NewTransaction(db, dbtools.RetryCount(100))
+	require.NoError(t, err)
+
+	calls := 0
+	// we are not using the same context to make sure the query causes the
+	// error.
+	err = tr.DB(context.Background(), func(tx dbtools.Tx) error {
+		calls++
+		query := `CREATE TABLE dbtest (name VARCHAR(100) NOT NULL)`
+		_, err := tx.ExecContext(ctx, query)
+		return err
+	}, func(tx dbtools.Tx) error {
+		cancel()
+		query := `INSERT INTO dbtest (name) VALUES ('a')`
+		_, err := tx.ExecContext(ctx, query)
+		return err
+	}, func(dbtools.Tx) error {
+		t.Error("didn't expect to get this")
+		return nil
+	})
+	assertInError(t, err, context.Canceled)
+	assert.Equal(t, 1, calls)
 }
