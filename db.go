@@ -101,6 +101,10 @@ func (t *Transaction) PGX(ctx context.Context, transactions ...func(pgx.Tx) erro
 				}()
 				err = fn(tx)
 			}()
+
+			if err == nil {
+				continue
+			}
 			if errors.Is(err, context.Canceled) {
 				err = &retry.StopError{Err: err}
 				ctx = context.Background()
@@ -142,6 +146,10 @@ func (t *Transaction) DB(ctx context.Context, transactions ...func(Tx) error) er
 				}()
 				err = fn(tx)
 			}()
+
+			if err == nil {
+				continue
+			}
 			if errors.Is(err, context.Canceled) {
 				err = &retry.StopError{Err: err}
 				ctx = context.Background()
