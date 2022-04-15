@@ -50,38 +50,36 @@ type Tx interface {
 }
 
 // A ConfigFunc function sets up a Transaction.
-type ConfigFunc func(*Transaction)
+type ConfigFunc func(*PGX)
 
 // Retry sets the retrier.
 func Retry(r retry.Retry) ConfigFunc {
-	return func(t *Transaction) {
-		t.retries = r.Attempts
-		t.delay = r.Delay
-		t.method = r.Method
+	return func(t *PGX) {
+		t.loop = r
 	}
 }
 
 // RetryCount defines a transaction should be tried n times. If n is 0, it will
 // be set as 1.
 func RetryCount(n int) ConfigFunc {
-	return func(t *Transaction) {
-		t.retries = n
+	return func(t *PGX) {
+		t.loop.Attempts = n
 	}
 }
 
 // RetryDelay is the amount of delay between each unsuccessful tries. Set
 // DelayMethod for the method of delay duration.
 func RetryDelay(d time.Duration) ConfigFunc {
-	return func(t *Transaction) {
-		t.delay = d
+	return func(t *PGX) {
+		t.loop.Delay = d
 	}
 }
 
 // DelayMethod decides how to delay between each tries. Default is
 // retry.StandardDelay.
 func DelayMethod(m retry.DelayMethod) ConfigFunc {
-	return func(t *Transaction) {
-		t.method = m
+	return func(t *PGX) {
+		t.loop.Method = m
 	}
 }
 

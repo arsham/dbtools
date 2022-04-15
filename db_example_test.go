@@ -12,27 +12,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func ExampleNewTransaction() {
+func ExampleNewPGX() {
 	// This setup tries the transaction only once.
-	dbtools.NewTransaction(&exampleConn{})
+	dbtools.NewPGX(&exampleConn{})
 
 	// This setup tries 100 times until succeeds. The delay is set to 10ms and
 	// it uses the retry.IncrementalDelay method, which means every time it
 	// increments the delay between retries with a jitter to avoid thunder herd
 	// problem.
-	dbtools.NewTransaction(&exampleConn{},
+	dbtools.NewPGX(&exampleConn{},
 		dbtools.RetryCount(100),
 		dbtools.RetryDelay(10*time.Millisecond),
 		dbtools.DelayMethod(retry.IncrementalDelay),
 	)
 }
 
-func ExampleTransaction_PGX() {
-	tr, err := dbtools.NewTransaction(&exampleConn{})
+func ExamplePGX_Transaction() {
+	tr, err := dbtools.NewPGX(&exampleConn{})
 	if err != nil {
 		panic(err)
 	}
-	err = tr.PGX(context.Background(), func(pgx.Tx) error {
+	err = tr.Transaction(context.Background(), func(pgx.Tx) error {
 		fmt.Println("Running first query.")
 		return nil
 	}, func(pgx.Tx) error {
@@ -47,13 +47,13 @@ func ExampleTransaction_PGX() {
 	// Transaction's error: <nil>
 }
 
-func ExampleTransaction_PGX_retries() {
-	tr, err := dbtools.NewTransaction(&exampleConn{}, dbtools.RetryCount(10))
+func ExamplePGX_Transaction_retries() {
+	tr, err := dbtools.NewPGX(&exampleConn{}, dbtools.RetryCount(10))
 	if err != nil {
 		panic(err)
 	}
 	called := false
-	err = tr.PGX(context.Background(), func(pgx.Tx) error {
+	err = tr.Transaction(context.Background(), func(pgx.Tx) error {
 		fmt.Println("Running first query.")
 		return nil
 	}, func(pgx.Tx) error {
@@ -75,17 +75,17 @@ func ExampleTransaction_PGX_retries() {
 	// Transaction's error: <nil>
 }
 
-func ExampleTransaction_PGX_stopTrying() {
+func ExamplePGX_Transaction_stopTrying() {
 	// This example shows how to stop trying when we know an error is not
 	// recoverable.
-	tr, err := dbtools.NewTransaction(&exampleConn{},
+	tr, err := dbtools.NewPGX(&exampleConn{},
 		dbtools.RetryCount(100),
 		dbtools.RetryDelay(time.Second),
 	)
 	if err != nil {
 		panic(err)
 	}
-	err = tr.PGX(context.Background(), func(pgx.Tx) error {
+	err = tr.Transaction(context.Background(), func(pgx.Tx) error {
 		fmt.Println("Running first query.")
 		return nil
 	}, func(pgx.Tx) error {
@@ -100,13 +100,13 @@ func ExampleTransaction_PGX_stopTrying() {
 	// Transaction returns my error: true
 }
 
-func ExampleTransaction_PGX_panics() {
-	tr, err := dbtools.NewTransaction(&exampleConn{}, dbtools.RetryCount(10))
+func ExamplePGX_Transaction_panics() {
+	tr, err := dbtools.NewPGX(&exampleConn{}, dbtools.RetryCount(10))
 	if err != nil {
 		panic(err)
 	}
 	calls := 0
-	err = tr.PGX(context.Background(), func(pgx.Tx) error {
+	err = tr.Transaction(context.Background(), func(pgx.Tx) error {
 		calls++
 		fmt.Printf("Call #%d.\n", calls)
 		if calls < 5 {
