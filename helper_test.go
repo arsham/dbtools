@@ -10,8 +10,6 @@ import (
 
 	"github.com/arsham/dbtools/v2/mocks"
 	"github.com/jackc/pgx/v4"
-
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,9 +19,8 @@ import (
 )
 
 // assertInError returns true if the needle is found in stack, which is created
-// either with pkg/errors help, the multierror or Go's error wrap. It will fall
-// back to checking the contents of the needle.Error() is in haystack.Error().
-//nolint:unparam // I don't have a plan for this yet, but it remains.
+// either with pkg/errors help or Go's error wrap. It will fall back to
+// checking the contents of the needle.Error() is in haystack.Error().
 func assertInError(t *testing.T, haystack, needle error) bool {
 	t.Helper()
 	if haystack == nil || needle == nil {
@@ -33,21 +30,9 @@ func assertInError(t *testing.T, haystack, needle error) bool {
 	if errors.Is(haystack, needle) {
 		return true
 	}
-	contains := func() bool {
-		return assert.Containsf(t, haystack.Error(), needle.Error(),
-			"want\n\t%v\nin\n\t%v", needle, haystack,
-		)
-	}
-	var merr *multierror.Error
-	if !errors.As(haystack, &merr) {
-		return contains()
-	}
-	for _, err := range merr.Errors {
-		if errors.Is(needle, err) {
-			return true
-		}
-	}
-	return contains()
+	return assert.Containsf(t, haystack.Error(), needle.Error(),
+		"want\n\t%v\nin\n\t%v", needle, haystack,
+	)
 }
 
 func init() {

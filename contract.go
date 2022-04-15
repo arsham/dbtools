@@ -5,11 +5,11 @@ package dbtools
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
 	"github.com/arsham/retry"
 	"github.com/jackc/pgx/v4"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -85,11 +85,20 @@ func DelayMethod(m retry.DelayMethod) ConfigFunc {
 	}
 }
 
-type dbWrapper struct {
-	db *sql.DB
+// trError is used for managing situations that an error is reported from the
+// transaction, and the rollback would result in an error.
+type trError struct {
+	err      error
+	rollback error
 }
 
-func (d *dbWrapper) BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error) {
-	// nolint:wrapcheck // it's a relay.
-	return d.db.BeginTx(ctx, opts)
+func (t *trError) Error() string {
+	return t.Unwrap().Error()
+}
+
+func (t *trError) Unwrap() error {
+	if t.rollback == nil {
+		return t.err
+	}
+	return errors.Wrapf(t.err, "%v (rollback error)", t.rollback)
 }

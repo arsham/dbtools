@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/arsham/retry"
-	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 )
@@ -80,12 +79,14 @@ func (t *Transaction) PGX(ctx context.Context, transactions ...func(pgx.Tx) erro
 		for _, fn := range transactions {
 			select {
 			case <-ctx.Done():
-				e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
-				return &retry.StopError{
-					Err: multierror.Append(ctx.Err(), e).ErrorOrNil(),
-				}
+				err := &trError{err: ctx.Err()}
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				err.rollback = tx.Rollback(ctx)
+				cancel()
+				return &retry.StopError{Err: err}
 			default:
 			}
+
 			var err error
 			func() {
 				defer func() {
@@ -104,8 +105,9 @@ func (t *Transaction) PGX(ctx context.Context, transactions ...func(pgx.Tx) erro
 				ctx = context.Background()
 			}
 			if err != nil {
-				e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
-				return multierror.Append(err, e)
+				err := &trError{err: err}
+				err.rollback = tx.Rollback(ctx)
+				return err
 			}
 		}
 		return errors.Wrap(tx.Commit(ctx), "committing transaction")
