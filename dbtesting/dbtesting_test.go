@@ -10,7 +10,7 @@ import (
 
 func TestOkValue(t *testing.T) {
 	t.Parallel()
-	tcs := map[string]interface{}{
+	tcs := map[string]any{
 		"nil":        nil,
 		"int":        666,
 		"float":      66.6,

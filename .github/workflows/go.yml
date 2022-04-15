@@ -17,27 +17,24 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go: ["1.17", "1.18"]
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
 
-      - name: Set up Go ${{ matrix.go }}
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go }}
+          go-version: 1.18
 
       - uses: actions/cache@v2
         with:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go }}
+            ${{ runner.os }}-go-
 
       - name: Running Tests
         run: make ci_tests
@@ -56,10 +53,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
-      - name: Set up Go ${{ matrix.go }}
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go }}
+          go-version: 1.18
 
       - name: WriteGoList
         run: go list -json -deps > go.list
@@ -76,5 +73,5 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.45.0
+          version: v1.45.2
           args: --timeout 5m0s

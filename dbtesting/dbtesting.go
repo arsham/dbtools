@@ -29,7 +29,7 @@ type ValueRecorder interface {
 	For(name string) sqlmock.Argument
 	// Value returns the recorded value of the item. It panics if the value is not
 	// been recorded.
-	Value(name string) interface{}
+	Value(name string) any
 }
 
 // NewValueRecorder returns a fresh ValueRecorder instance.
@@ -38,7 +38,7 @@ func NewValueRecorder() ValueRecorder {
 }
 
 type value struct {
-	val   interface{}
+	val   any
 	valid bool
 }
 
@@ -76,7 +76,7 @@ func (v valueRecorder) For(s string) sqlmock.Argument {
 
 // Value returns the recorded value of the item. It panics if the value is not
 // been recorded.
-func (v valueRecorder) Value(s string) interface{} {
+func (v valueRecorder) Value(s string) any {
 	id, ok := v[s]
 	if !ok || id == nil {
 		panic(s + " not recorded yet")

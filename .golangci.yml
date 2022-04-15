@@ -1,3 +1,6 @@
+service:
+  golangci-lint-version: 1.45.x
+
 linters-settings:
   funlen:
     lines: 100
@@ -35,6 +38,7 @@ linters-settings:
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+    disable-all: true
     enable:
       - assign
       - atomic
@@ -96,16 +100,14 @@ issues:
   exclude-use-default: false
 
 run:
+  go: "1.18"
   timeout: 5m
   skip-dirs:
-    - model
     - tmp
     - bin
     - scripts
   allow-parallel-runners: true
   tests: true
-  build-tags:
-    - integration
 
 linters:
   enable:

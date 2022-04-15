@@ -25,14 +25,14 @@ lint: ## list the code
 
 .PHONY: ci_tests
 ci_tests: ## Run tests for CI.
-	go test -trimpath --timeout=10m -failfast -v -tags=integration -race -covermode=atomic -coverprofile=coverage.out ./...
+	go test -trimpath --timeout=10m -failfast -v  -race -covermode=atomic -coverprofile=coverage.out ./...
 
 .PHONY: dependencies
 dependencies: ## Install dependencies requried for development operations.
 	@go install github.com/cespare/reflex@latest
 	@go get github.com/stretchr/testify/mock
 	@go get github.com/vektra/mockery/.../
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.0
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2
 	@go install github.com/psampaz/go-mod-outdated@latest
 	@go install github.com/jondot/goweight@latest
 	@go get -t -u golang.org/x/tools/cmd/cover
