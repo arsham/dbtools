@@ -7,16 +7,19 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/arsham/dbtools)](https://goreportcard.com/report/github.com/arsham/dbtools)
 
-This library contains goroutine safe helpers for retrying transactions until
+This library contains concurrent safe helpers for retrying transactions until
 they succeed and handles errors in a developer friendly way. There are helpers
 for using with [go-sqlmock][go-sqlmock] in tests. There is also a `Mocha`
 inspired reporter for [spec BDD library][spec].
 
-This library supports `Go >= 1.17`.
+This library supports `Go >= 1.18`. To use this library use this import path:
 
-1. [Transaction](#transaction)
-   - [PGX Pool](#pgx-pool)
-   - [Standard Library](#standard-library)
+```go
+github.com/arsham/dbtools/v2
+```
+
+1. [PGX Transaction](#pgx-transaction)
+   - [Common Patterns](#common-patterns)
 2. [SQLMock Helpers](#sqlmock-helpers)
    - [ValueRecorder](#valuerecorder)
    - [OkValue](#okvalue)
@@ -25,33 +28,33 @@ This library supports `Go >= 1.17`.
 4. [Development](#development)
 5. [License](#license)
 
-## Transaction
+## PGX Transaction
 
-`Transaction` helps you reduce the amount of code you put in the logic by taking
-care of errors. For example instead of writing:
+The `PGX` struct helps reducing the amount of code you put in the logic by
+taking care of errors. For example instead of writing:
 
 ```go
-tx, err := db.Begin()
+tx, err := db.Begin(ctx)
 if err != nil {
     return errors.Wrap(err, "starting transaction")
 }
 err := firstQueryCall(tx)
 if err != nil {
-    e := errors.Wrap(tx.Rollback(), "rolling back transaction")
+    e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
     return multierror.Append(err, e).ErrorOrNil()
 }
 err := secondQueryCall(tx)
 if err != nil {
-    e := errors.Wrap(tx.Rollback(), "rolling back transaction")
+    e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
     return multierror.Append(err, e).ErrorOrNil()
 }
 err := thirdQueryCall(tx)
 if err != nil {
-    e := errors.Wrap(tx.Rollback(), "rolling back transaction")
+    e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
     return multierror.Append(err, e).ErrorOrNil()
 }
 
-return errors.Wrap(tx.Commit(), "committing transaction")
+return errors.Wrap(tx.Commit(ctx), "committing transaction")
 
 ```
 
@@ -59,68 +62,129 @@ You will write:
 
 ```go
 // for using with pgx connections:
-tr, err := dbtools.NewTransaction(conn)
-// handle error, and reuse tr
-return tr.PGX(ctx, firstQueryCall, secondQueryCall, thirdQueryCall)
-
-// or to use with stdlib sql.DB:
-tr, err := dbtools.NewTransaction(conn)
-// handle error, and reuse tr
-return tr.DB(ctx, firstQueryCall, secondQueryCall, thirdQueryCall)
+p, err := dbtools.NewPGX(conn)
+// handle the error!
+return p.Transaction(ctx, firstQueryCall, secondQueryCall, thirdQueryCall)
 ```
 
-At any point a transaction function returns an error, the whole transaction is
-started over.
+At any point any of the callback functions return an error, the transaction is
+rolled-back, after the given delay the operation is retried in a new
+transaction.
 
 You may set the retry count, delays, and the delay method by passing
-`dbtools.ConfigFunc` functions to the constructor. If you don't pass any
-config, `PGX` and `DB` methods will run only once.
+`dbtools.ConfigFunc` helpers to the constructor. If you don't pass any config,
+the `Transaction` method will run only once.
 
-You can prematurely stop retrying by returning a `retry.StopError` error:
+You can prematurely stop retrying by returning a `*retry.StopError` error:
 
 ```go
-err = tr.PGX(ctx, func(tx pgx.Tx) error {
+err = p.Transaction(ctx, func(tx pgx.Tx) error {
     _, err := tx.Exec(ctx, query)
-    return retry.StopError{Err: err}
+    return &retry.StopError{Err: err}
 })
 ```
 
 See [retry][retry] library for more information.
 
-### PGX Pool
-
-Your transaction functions should be of `func(pgx.Tx) error` type. To try up to
-20 time until your queries succeed:
-
-```go
-// conn is a *sql.DB instance
-tr, err := dbtools.NewTransaction(conn, dbtools.Retry(20))
-// handle error
-err = tr.PGX(ctx, func(tx pgx.Tx) error {
-    // use tx to run your queries
-    return err
-}, func(tx pgx.Tx) error {
-    return err
-})
-// handle error
-```
-
-### Standard Library
-
-Your transaction functions should be of `func(dbtools.Tx) error` type. To try up to
-20 time until your queries succeed:
+The callback functions should be of `func(pgx.Tx) error` type. To try up to 20
+time until your queries succeed:
 
 ```go
 // conn is a *pgxpool.Pool instance
-tr, err := dbtools.NewTransaction(conn, dbtools.Retry(20))
-// handle error
-err = tr.DB(ctx, func(tx dbtools.Tx) error {
+p, err := dbtools.NewPGX(conn, dbtools.Retry(20))
+// handle the error
+err = p.Transaction(ctx, func(tx pgx.Tx) error {
     // use tx to run your queries
-    return err
-}, func(tx dbtools.Tx) error {
+    return someErr
+  }, func(tx pgx.Tx) error {
+    return someErr
+  }, func(tx pgx.Tx) error {
+    return someErr
+  // add more callbacks if required.
+})
+// handle the error!
+```
+
+### Common Patterns
+
+Stop retrying when the row is not found:
+
+```go
+err := retrier.Do(func() error {
+    const query = `SELECT foo FROM bar WHERE id = $1::int`
+    err := conn.QueryRow(ctx, query, msgID).Scan(&foo)
+    if errors.Is(err, pgx.ErrNoRows) {
+      return &retry.StopError{Err: ErrFooNotFound}
+    }
+    return errors.Wrap(err, "quering database")
+})
+```
+
+Stop retrying when there are integrity errors:
+
+```go
+// integrityCheckErr returns a *retry.StopError wrapping the err with the msg
+// if the query causes integrity constraint violation error. You should use
+// this check to stop the retry mechanism, otherwise the transaction repeats.
+func integrityCheckErr(err error, msg string) error {
+    var v *pgconn.PgError
+    if errors.As(err, &v) && isIntegrityConstraintViolation(v.Code) {
+        return &retry.StopError{Err: errors.Wrap(err, msg)}
+    }
+    return errors.Wrap(err, msg)
+}
+
+func isIntegrityConstraintViolation(code string) bool {
+    switch code {
+    case pgerrcode.IntegrityConstraintViolation,
+        pgerrcode.RestrictViolation,
+        pgerrcode.NotNullViolation,
+        pgerrcode.ForeignKeyViolation,
+        pgerrcode.CheckViolation,
+        pgerrcode.ExclusionViolation:
+        return true
+    }
+    return false
+}
+
+err := p.Transaction(ctx, func(tx pgx.Tx) error {
+    const query = `INSERT INTO foo (bar) VALUES ($1::text)`
+    err := tx.Exec(ctx, query, name)
+    return integrityCheckErr(err, "creating new record")
+}, func(tx pgx.Tx) error {
+    const query = `UPDATE baz SET updated_at=NOW()::timestamptz WHERE id = $1::int`
+    _, err := tx.Exec(ctx, query, msgID)
     return err
 })
-// handle error
+```
+
+This is not a part of the `dbtools` library, but it deserves a mention. Here is
+a common pattern for querying for multiple rows:
+
+```go
+result := make([]Result, 0, expectedTotal)
+err := retrier.Do(func() error {
+    rows, err := r.pool.Query(ctx, query, args...)
+    if err != nil {
+        return errors.Wrap(err, "making query")
+    }
+    defer rows.Close()
+
+    // make sure you reset the slice, otherwise in the next retry it adds the
+    // same data to the slice again.
+    result = result[:0]
+    for rows.Next() {
+        var doc Result
+        err := rows.Scan(&doc.A, &doc.B)
+        if err != nil {
+            return errors.Wrap(err, "scanning rows")
+        }
+        result = append(result, doc)
+    }
+
+    return errors.Wrap(rows.Err(), "row error")
+})
+// handle the error!
 ```
 
 ## SQLMock Helpers
@@ -158,7 +222,7 @@ Your tests can be checked easily like this:
 
 ```go
 import (
-    "github.com/arsham/dbtools/dbtesting"
+    "github.com/arsham/dbtools/v2/dbtesting"
     "github.com/DATA-DOG/go-sqlmock"
 )
 
@@ -198,7 +262,7 @@ relevant to the current test), you can use `OkValue`.
 
 ```go
 import (
-    "github.com/arsham/dbtools/dbtesting"
+    "github.com/arsham/dbtools/v2/dbtesting"
     "github.com/DATA-DOG/go-sqlmock"
 )
 
@@ -223,7 +287,7 @@ mock.ExpectExec("INSERT INTO life .+").
 ### Usage
 
 ```go
-import "github.com/arsham/dbtools/dbtesting"
+import "github.com/arsham/dbtools/v2/dbtesting"
 
 func TestFoo(t *testing.T) {
     spec.Run(t, "Foo", func(t *testing.T, when spec.G, it spec.S) {
