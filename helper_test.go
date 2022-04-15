@@ -124,7 +124,3 @@ func (e *exampleConn) Begin(context.Context) (pgx.Tx, error) {
 	tx.On("Commit", mock.Anything).Return(nil)
 	return tx, nil
 }
-
-func (e *exampleConn) BeginTx(ctx context.Context, _ pgx.TxOptions) (pgx.Tx, error) {
-	return e.Begin(ctx)
-}

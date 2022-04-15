@@ -19,12 +19,6 @@ var (
 	errPanic = errors.New("function caused a panic")
 )
 
-// DB is the contract for beginning a transaction with a *sql.DB object.
-//go:generate mockery --name DB --filename db_mock.go
-type DB interface {
-	BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error)
-}
-
 // Pool is the contract for beginning a transaction with a pgxpool db
 // connection.
 //go:generate mockery --name Pool --filename pool_mock.go

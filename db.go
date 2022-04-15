@@ -2,7 +2,6 @@ package dbtools
 
 import (
 	"context"
-	"database/sql"
 	"runtime/debug"
 	"time"
 
@@ -34,7 +33,6 @@ import (
 // set.
 type Transaction struct {
 	method  retry.DelayMethod
-	db      DB
 	pool    Pool
 	loop    retry.Retry
 	delay   time.Duration
@@ -49,12 +47,8 @@ func NewTransaction(conn interface{}, conf ...ConfigFunc) (*Transaction, error) 
 	}
 	t := &Transaction{}
 	switch db := conn.(type) {
-	case DB:
-		t.db = db
 	case Pool:
 		t.pool = db
-	case *sql.DB:
-		t.db = &dbWrapper{db: db}
 	default:
 		return nil, ErrEmptyDatabase
 	}
@@ -115,50 +109,5 @@ func (t *Transaction) PGX(ctx context.Context, transactions ...func(pgx.Tx) erro
 			}
 		}
 		return errors.Wrap(tx.Commit(ctx), "committing transaction")
-	})
-}
-
-// DB returns an error if a sql.DB connection is not set.
-func (t *Transaction) DB(ctx context.Context, transactions ...func(Tx) error) error {
-	if t.db == nil {
-		return ErrEmptyDatabase
-	}
-	return t.loop.Do(func() error {
-		tx, err := t.db.BeginTx(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "starting transaction")
-		}
-		for _, fn := range transactions {
-			select {
-			case <-ctx.Done():
-				e := errors.Wrap(tx.Rollback(), "rolling back transaction")
-				return &retry.StopError{
-					Err: multierror.Append(ctx.Err(), e).ErrorOrNil(),
-				}
-			default:
-			}
-			var err error
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						err = errors.Wrapf(errPanic, "%v\n%s", r, debug.Stack())
-					}
-				}()
-				err = fn(tx)
-			}()
-
-			if err == nil {
-				continue
-			}
-			if errors.Is(err, context.Canceled) {
-				err = &retry.StopError{Err: err}
-				ctx = context.Background()
-			}
-			if err != nil {
-				e := errors.Wrap(tx.Rollback(), "rolling back transaction")
-				return multierror.Append(err, e)
-			}
-		}
-		return errors.Wrap(tx.Commit(), "committing transaction")
 	})
 }
