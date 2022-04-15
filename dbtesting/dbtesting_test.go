@@ -6,6 +6,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/arsham/dbtools/dbtesting"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOkValue(t *testing.T) {
@@ -22,22 +24,17 @@ func TestOkValue(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			db, mock, err := sqlmock.New()
-			if err != nil {
-				t.Fatalf("got %v, want nil", err)
-			}
+			require.NoError(t, err)
 			defer db.Close()
 			defer func() {
-				if err := mock.ExpectationsWereMet(); err != nil {
-					t.Errorf("there were unfulfilled expectations: %s", err)
-				}
+				err := mock.ExpectationsWereMet()
+				assert.NoError(t, err, "there were unfulfilled expectations")
 			}()
 			mock.ExpectExec("INSERT INTO life .+").
 				WithArgs(dbtesting.OkValue).
 				WillReturnResult(sqlmock.NewResult(1, 1))
 			_, err = db.Exec("INSERT INTO life (name) VALUE ($1)", tc)
-			if err != nil {
-				t.Errorf("got %v, want nil", err)
-			}
+			require.NoError(t, err)
 		})
 	}
 }
@@ -76,14 +73,11 @@ func TestValueRecorder(t *testing.T) {
 func testValueRecorderRecord(t *testing.T) {
 	t.Parallel()
 	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("got %v, want nil", err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 	defer func() {
-		if err := mock.ExpectationsWereMet(); err != nil {
-			t.Errorf("there were unfulfilled expectations: %s", err)
-		}
+		err := mock.ExpectationsWereMet()
+		assert.NoError(t, err, "there were unfulfilled expectations")
 	}()
 	defer func() {
 		if e := recover(); e != nil {
@@ -95,9 +89,7 @@ func testValueRecorderRecord(t *testing.T) {
 		WithArgs(rec.Record("satan")).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	_, err = db.Exec("query", float64(66.6))
-	if err != nil {
-		t.Fatalf("got %v, want nil", err)
-	}
+	require.NoError(t, err)
 	got := rec.Value("satan")
 	if v, ok := got.(float64); !ok || v != 66.6 {
 		t.Errorf("%+v: got %f, want %f", got, v, 66.6)
@@ -106,31 +98,21 @@ func testValueRecorderRecord(t *testing.T) {
 
 func testValueRecorderRecordPanic(t *testing.T) {
 	t.Parallel()
-	defer func() {
-		paniced := false
-		if e := recover(); e != nil {
-			paniced = true
-		}
-		if !paniced {
-			t.Error("did not panic")
-		}
-	}()
-	rec := dbtesting.NewValueRecorder()
-	rec.Record("god")
-	rec.Record("god")
+	assert.Panics(t, func() {
+		rec := dbtesting.NewValueRecorder()
+		rec.Record("god")
+		rec.Record("god")
+	})
 }
 
 func testValueRecorderFor(t *testing.T) {
 	t.Parallel()
 	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("got %v, want nil", err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 	defer func() {
-		if err := mock.ExpectationsWereMet(); err != nil {
-			t.Errorf("there were unfulfilled expectations: %s", err)
-		}
+		err := mock.ExpectationsWereMet()
+		assert.NoError(t, err, "there were unfulfilled expectations")
 	}()
 	defer func() {
 		if e := recover(); e != nil {
@@ -145,41 +127,27 @@ func testValueRecorderFor(t *testing.T) {
 		WithArgs(rec.For("satan")).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	_, err = db.Exec("query1", float64(66.6))
-	if err != nil {
-		t.Fatalf("got %v, want nil", err)
-	}
+	require.NoError(t, err)
 	_, err = db.Exec("query2", float64(66.6))
-	if err != nil {
-		t.Fatalf("got %v, want nil", err)
-	}
+	require.NoError(t, err)
 }
 
 func testValueRecorderForPanic(t *testing.T) {
 	t.Parallel()
-	defer func() {
-		paniced := false
-		if e := recover(); e != nil {
-			paniced = true
-		}
-		if !paniced {
-			t.Error("did not panic")
-		}
-	}()
-	rec := dbtesting.NewValueRecorder()
-	rec.For("god")
+	assert.Panics(t, func() {
+		rec := dbtesting.NewValueRecorder()
+		rec.For("god")
+	})
 }
 
 func testValueRecorderValue(t *testing.T) {
 	t.Parallel()
 	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("got %v, want nil", err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 	defer func() {
-		if err := mock.ExpectationsWereMet(); err != nil {
-			t.Errorf("there were unfulfilled expectations: %s", err)
-		}
+		err := mock.ExpectationsWereMet()
+		assert.NoError(t, err, "there were unfulfilled expectations")
 	}()
 	defer func() {
 		if e := recover(); e != nil {
@@ -192,28 +160,17 @@ func testValueRecorderValue(t *testing.T) {
 		WithArgs(rec.Record("satan")).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	_, err = db.Exec("query", val)
-	if err != nil {
-		t.Fatalf("got %v, want nil", err)
-	}
-	got := rec.Value("satan").(float64)
-	if got != val {
-		t.Errorf("got %f, want %f", got, val)
-	}
+	require.NoError(t, err)
+	got := rec.Value("satan")
+	assert.Equal(t, val, got)
 }
 
 func testValueRecorderValuePanic(t *testing.T) {
 	t.Parallel()
-	defer func() {
-		paniced := false
-		if e := recover(); e != nil {
-			paniced = true
-		}
-		if !paniced {
-			t.Error("did not panic")
-		}
-	}()
-	rec := dbtesting.NewValueRecorder()
-	rec.Value("god")
+	assert.Panics(t, func() {
+		rec := dbtesting.NewValueRecorder()
+		rec.Value("god")
+	})
 }
 
 func ExampleValueRecorder() {
