@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/arsham/dbtools"
-	"github.com/arsham/dbtools/mocks"
+	"github.com/arsham/dbtools/v2"
+	"github.com/arsham/dbtools/v2/mocks"
 	"github.com/arsham/retry"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"

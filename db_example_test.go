@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arsham/dbtools"
+	"github.com/arsham/dbtools/v2"
 	"github.com/arsham/retry"
 	"github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/assert"

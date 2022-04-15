@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arsham/dbtools/mocks"
+	"github.com/arsham/dbtools/v2/mocks"
 	"github.com/jackc/pgx/v4"
 
 	"github.com/hashicorp/go-multierror"
