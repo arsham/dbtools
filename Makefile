@@ -32,7 +32,7 @@ dependencies: ## Install dependencies requried for development operations.
 	@go install github.com/cespare/reflex@latest
 	@go get github.com/stretchr/testify/mock
 	@go get github.com/vektra/mockery/.../
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@go install github.com/psampaz/go-mod-outdated@latest
 	@go install github.com/jondot/goweight@latest
 	@go get -t -u golang.org/x/tools/cmd/cover
