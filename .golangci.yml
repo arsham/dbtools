@@ -93,6 +93,7 @@ issues:
         - govet
         - errcheck
         - forcetypeassert
+        - unparam
   fix: true
   exclude-use-default: false
 
@@ -111,7 +112,6 @@ linters:
     - bidichk
     - bodyclose
     - cyclop
-    - deadcode
     - depguard
     - dogsled
     - dupl
@@ -145,7 +145,6 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - structcheck
     - stylecheck
     - tenv
     - tparallel
@@ -153,6 +152,5 @@ linters:
     - unconvert
     - unparam
     - unused
-    - varcheck
     - wastedassign
     - whitespace
