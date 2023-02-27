@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ["1.18", "1.19"]
+        go: ["1.20"]
 
     steps:
       - name: Checkout repo
@@ -58,10 +58,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Go
+      - name: Set up Go ${{ matrix.go }}
         uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go }}
+
+      - name: Check for go vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
       - name: WriteGoList
         run: go list -json -deps > go.list

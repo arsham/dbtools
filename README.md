@@ -12,9 +12,15 @@ they succeed and handles errors in a developer friendly way. There are helpers
 for using with [go-sqlmock][go-sqlmock] in tests. There is also a `Mocha`
 inspired reporter for [spec BDD library][spec].
 
-This library supports `Go >= 1.18`. To use this library use this import path:
+This library supports `Go >= 1.20`. To use this library use this import path:
 
-```go
+```
+github.com/arsham/dbtools/v3
+```
+
+For older Go's support use the v2:
+
+```
 github.com/arsham/dbtools/v2
 ```
 
@@ -36,22 +42,22 @@ taking care of errors. For example instead of writing:
 ```go
 tx, err := db.Begin(ctx)
 if err != nil {
-    return errors.Wrap(err, "starting transaction")
+	return errors.Wrap(err, "starting transaction")
 }
 err := firstQueryCall(tx)
 if err != nil {
-    e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
-    return multierror.Append(err, e).ErrorOrNil()
+	e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
+	return multierror.Append(err, e).ErrorOrNil()
 }
 err := secondQueryCall(tx)
 if err != nil {
-    e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
-    return multierror.Append(err, e).ErrorOrNil()
+	e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
+	return multierror.Append(err, e).ErrorOrNil()
 }
 err := thirdQueryCall(tx)
 if err != nil {
-    e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
-    return multierror.Append(err, e).ErrorOrNil()
+	e := errors.Wrap(tx.Rollback(ctx), "rolling back transaction")
+	return multierror.Append(err, e).ErrorOrNil()
 }
 
 return errors.Wrap(tx.Commit(ctx), "committing transaction")
@@ -79,8 +85,8 @@ You can prematurely stop retrying by returning a `*retry.StopError` error:
 
 ```go
 err = p.Transaction(ctx, func(tx pgx.Tx) error {
-    _, err := tx.Exec(ctx, query)
-    return &retry.StopError{Err: err}
+	_, err := tx.Exec(ctx, query)
+	return &retry.StopError{Err: err}
 })
 ```
 
@@ -94,13 +100,13 @@ time until your queries succeed:
 p, err := dbtools.NewPGX(conn, dbtools.Retry(20))
 // handle the error
 err = p.Transaction(ctx, func(tx pgx.Tx) error {
-    // use tx to run your queries
-    return someErr
-  }, func(tx pgx.Tx) error {
-    return someErr
-  }, func(tx pgx.Tx) error {
-    return someErr
-  // add more callbacks if required.
+	// use tx to run your queries
+	return someErr
+}, func(tx pgx.Tx) error {
+	return someErr
+}, func(tx pgx.Tx) error {
+	return someErr
+	// add more callbacks if required.
 })
 // handle the error!
 ```
@@ -111,12 +117,12 @@ Stop retrying when the row is not found:
 
 ```go
 err := retrier.Do(func() error {
-    const query = `SELECT foo FROM bar WHERE id = $1::int`
-    err := conn.QueryRow(ctx, query, msgID).Scan(&foo)
-    if errors.Is(err, pgx.ErrNoRows) {
-      return &retry.StopError{Err: ErrFooNotFound}
-    }
-    return errors.Wrap(err, "quering database")
+	const query = `SELECT foo FROM bar WHERE id = $1::int`
+	err := conn.QueryRow(ctx, query, msgID).Scan(&foo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return &retry.StopError{Err: ErrFooNotFound}
+	}
+	return errors.Wrap(err, "quering database")
 })
 ```
 
@@ -164,25 +170,26 @@ a common pattern for querying for multiple rows:
 ```go
 result := make([]Result, 0, expectedTotal)
 err := retrier.Do(func() error {
-    rows, err := r.pool.Query(ctx, query, args...)
-    if err != nil {
-        return errors.Wrap(err, "making query")
-    }
-    defer rows.Close()
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return errors.Wrap(err, "making query")
+	}
 
-    // make sure you reset the slice, otherwise in the next retry it adds the
-    // same data to the slice again.
-    result = result[:0]
-    for rows.Next() {
-        var doc Result
-        err := rows.Scan(&doc.A, &doc.B)
-        if err != nil {
-            return errors.Wrap(err, "scanning rows")
-        }
-        result = append(result, doc)
-    }
+	defer rows.Close()
 
-    return errors.Wrap(rows.Err(), "row error")
+	// make sure you reset the slice, otherwise in the next retry it adds the
+	// same data to the slice again.
+	result = result[:0]
+	for rows.Next() {
+		var doc Result
+		err := rows.Scan(&doc.A, &doc.B)
+		if err != nil {
+			return errors.Wrap(err, "scanning rows")
+		}
+		result = append(result, doc)
+	}
+
+	return errors.Wrap(rows.Err(), "row error")
 })
 // handle the error!
 ```
@@ -206,15 +213,15 @@ use the same value on next queries:
 import "database/sql"
 
 func TestFoo(t *testing.T) {
-    // ...
-    // assume num has been generated randomly
-    num := 666
-    _, err := tx.ExecContext(ctx, "INSERT INTO life (value) VALUE ($1)", num)
-    // error check
-    _, err = tx.ExecContext(ctx, "INSERT INTO reality (value) VALUE ($1)", num)
-    // error check
-    _, err = tx.ExecContext(ctx, "INSERT INTO everywhere (value) VALUE ($1)", num)
-    // error check
+	// ...
+	// assume num has been generated randomly
+	num := 666
+	_, err := tx.ExecContext(ctx, "INSERT INTO life (value) VALUE ($1)", num)
+	// error check
+	_, err = tx.ExecContext(ctx, "INSERT INTO reality (value) VALUE ($1)", num)
+	// error check
+	_, err = tx.ExecContext(ctx, "INSERT INTO everywhere (value) VALUE ($1)", num)
+	// error check
 }
 ```
 
@@ -222,22 +229,22 @@ Your tests can be checked easily like this:
 
 ```go
 import (
-    "github.com/arsham/dbtools/v2/dbtesting"
-    "github.com/DATA-DOG/go-sqlmock"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/arsham/dbtools/v3/dbtesting"
 )
 
 func TestFoo(t *testing.T) {
-    // ...
-    rec := dbtesting.NewValueRecorder()
-    mock.ExpectExec("INSERT INTO life .+").
-        WithArgs(rec.Record("truth")).
-        WillReturnResult(sqlmock.NewResult(1, 1))
-    mock.ExpectExec("INSERT INTO reality .+").
-        WithArgs(rec.For("truth")).
-        WillReturnResult(sqlmock.NewResult(1, 1))
-    mock.ExpectExec("INSERT INTO everywhere .+").
-        WithArgs(rec.For("truth")).
-        WillReturnResult(sqlmock.NewResult(1, 1))
+	// ...
+	rec := dbtesting.NewValueRecorder()
+	mock.ExpectExec("INSERT INTO life .+").
+		WithArgs(rec.Record("truth")).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO reality .+").
+		WithArgs(rec.For("truth")).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO everywhere .+").
+		WithArgs(rec.For("truth")).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 }
 ```
 
@@ -262,7 +269,7 @@ relevant to the current test), you can use `OkValue`.
 
 ```go
 import (
-    "github.com/arsham/dbtools/v2/dbtesting"
+    "github.com/arsham/dbtools/v3/dbtesting"
     "github.com/DATA-DOG/go-sqlmock"
 )
 
@@ -287,12 +294,12 @@ mock.ExpectExec("INSERT INTO life .+").
 ### Usage
 
 ```go
-import "github.com/arsham/dbtools/v2/dbtesting"
+import "github.com/arsham/dbtools/v3/dbtesting"
 
 func TestFoo(t *testing.T) {
-    spec.Run(t, "Foo", func(t *testing.T, when spec.G, it spec.S) {
-        // ...
-    }, spec.Report(&dbtesting.Mocha{}))
+	spec.Run(t, "Foo", func(t *testing.T, when spec.G, it spec.S) {
+		// ...
+	}, spec.Report(&dbtesting.Mocha{}))
 }
 
 ```

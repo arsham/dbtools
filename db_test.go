@@ -2,17 +2,19 @@ package dbtools_test
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
-	"github.com/arsham/dbtools/v2"
-	"github.com/arsham/dbtools/v2/mocks"
-	"github.com/arsham/retry"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/pkg/errors"
+	"github.com/arsham/retry/v2"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/arsham/dbtools/v3"
+	"github.com/arsham/dbtools/v3/mocks"
 )
 
 func TestNewPGX(t *testing.T) {
@@ -24,10 +26,9 @@ func TestNewPGX(t *testing.T) {
 		wantErr error
 	}{
 		"nil db":       {nil, nil, dbtools.ErrEmptyDatabase},
-		"low attempts": {db, []dbtools.ConfigFunc{dbtools.RetryCount(-1)}, nil},
-		"delay method": {db, []dbtools.ConfigFunc{dbtools.DelayMethod(retry.IncrementalDelay)}, nil},
-		"retrier":      {db, []dbtools.ConfigFunc{dbtools.Retry(retry.Retry{})}, nil},
-		"all ok":       {db, nil, nil},
+		"low attempts": {db, []dbtools.ConfigFunc{dbtools.Retry(-1, time.Millisecond)}, nil},
+		"retrier":      {db, []dbtools.ConfigFunc{dbtools.WithRetry(retry.Retry{})}, nil},
+		"defaults":     {db, nil, nil},
 	}
 	for name, tc := range tcs {
 		tc := tc
@@ -38,7 +39,7 @@ func TestNewPGX(t *testing.T) {
 				assert.NoError(t, err)
 				return
 			}
-			assertInError(t, err, tc.wantErr)
+			assert.ErrorIs(t, err, tc.wantErr)
 		})
 	}
 }
@@ -62,25 +63,23 @@ func TestPGX(t *testing.T) {
 
 func testPGXTransactionNilDatabase(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	tr := &dbtools.PGX{}
 	err := tr.Transaction(ctx, func(pgx.Tx) error {
 		t.Error("didn't expect to receive this call")
 		return nil
 	})
-	assertInError(t, err, dbtools.ErrEmptyDatabase)
+	assert.ErrorIs(t, err, dbtools.ErrEmptyDatabase)
 }
 
 func testPGXTransactionBeginError(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 3
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total, time.Millisecond))
 	require.NoError(t, err)
 
 	db.On("Begin", mock.Anything).
@@ -90,10 +89,11 @@ func testPGXTransactionBeginError(t *testing.T) {
 		t.Error("didn't expect to receive this call")
 		return nil
 	})
-	assertInError(t, err, assert.AnError)
+	assert.ErrorIs(t, err, assert.AnError)
 }
 
 func testPGXTransactionCancelledContext(t *testing.T) {
+	t.Parallel()
 	t.Run("FirstFunction", testPGXTransactionCancelledContextFirstFunction)
 	t.Run("SecondFunction", testPGXTransactionCancelledContextSecondFunction)
 }
@@ -105,7 +105,7 @@ func testPGXTransactionCancelledContextFirstFunction(t *testing.T) {
 	defer cancel()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total*10))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total*10, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -123,7 +123,7 @@ func testPGXTransactionCancelledContextFirstFunction(t *testing.T) {
 		}
 		return assert.AnError
 	})
-	assertInError(t, err, context.Canceled)
+	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, total-1, calls)
 }
 
@@ -134,7 +134,7 @@ func testPGXTransactionCancelledContextSecondFunction(t *testing.T) {
 	defer cancel()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total*10))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total*10, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -154,18 +154,17 @@ func testPGXTransactionCancelledContextSecondFunction(t *testing.T) {
 	}, func(pgx.Tx) error {
 		return assert.AnError
 	})
-	assertInError(t, err, context.Canceled)
+	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, total, calls)
 }
 
 func testPGXTransactionPanic(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -184,6 +183,7 @@ func testPGXTransactionPanic(t *testing.T) {
 }
 
 func testPGXTransactionAnError(t *testing.T) {
+	t.Parallel()
 	t.Run("NoRollbackError", testPGXTransactionAnErrorNoRollbackError)
 	t.Run("WithRollbackError", testPGXTransactionAnErrorWithRollbackError)
 }
@@ -191,11 +191,10 @@ func testPGXTransactionAnError(t *testing.T) {
 func testPGXTransactionAnErrorNoRollbackError(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -209,18 +208,17 @@ func testPGXTransactionAnErrorNoRollbackError(t *testing.T) {
 		calls++
 		return assert.AnError
 	})
-	assertInError(t, err, assert.AnError)
+	assert.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 
 func testPGXTransactionAnErrorWithRollbackError(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total, time.Millisecond))
 	require.NoError(t, err)
 
 	trError := errors.New("in transaction")
@@ -233,17 +231,16 @@ func testPGXTransactionAnErrorWithRollbackError(t *testing.T) {
 	err = tr.Transaction(ctx, func(pgx.Tx) error {
 		return trError
 	})
-	assertInError(t, err, trError)
-	assertInError(t, err, rollbackError)
+	assert.ErrorIs(t, err, trError)
+	assert.ErrorIs(t, err, rollbackError)
 }
 
 func testPGXTransactionErrorIs(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(1))
+	tr, err := dbtools.NewPGX(db)
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -259,11 +256,10 @@ func testPGXTransactionErrorIs(t *testing.T) {
 func testPGXTransactionRollbackError(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -277,18 +273,17 @@ func testPGXTransactionRollbackError(t *testing.T) {
 		calls++
 		panic(randomString(10))
 	})
-	assertInError(t, err, assert.AnError)
+	assert.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 
 func testPGXTransactionCommitError(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -302,11 +297,12 @@ func testPGXTransactionCommitError(t *testing.T) {
 		calls++
 		return nil
 	})
-	assertInError(t, err, assert.AnError)
+	assert.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 
 func testPGXTransactionShortStop(t *testing.T) {
+	t.Parallel()
 	t.Run("WithValue", testPGXTransactionShortStopWithValue)
 	t.Run("WithPointer", testPGXTransactionShortStopWithPointer)
 }
@@ -314,38 +310,10 @@ func testPGXTransactionShortStop(t *testing.T) {
 func testPGXTransactionShortStopWithValue(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 3
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total*10))
-	require.NoError(t, err)
-
-	tx := mocks.NewPGXTx(t)
-	db.On("Begin", mock.Anything).Return(tx, nil).
-		Times(total)
-	tx.On("Rollback", mock.Anything).Return(nil).Times(total)
-
-	calls := 0
-	err = tr.Transaction(ctx, func(pgx.Tx) error {
-		calls++
-		if calls >= total {
-			return retry.StopError{Err: assert.AnError}
-		}
-		return errors.New(randomString(10))
-	})
-	assertInError(t, err, assert.AnError)
-	assert.Equal(t, total, calls)
-}
-
-func testPGXTransactionShortStopWithPointer(t *testing.T) {
-	t.Parallel()
-	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	total := 3
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total*10))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total*10, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -365,14 +333,39 @@ func testPGXTransactionShortStopWithPointer(t *testing.T) {
 	assert.Equal(t, total, calls)
 }
 
+func testPGXTransactionShortStopWithPointer(t *testing.T) {
+	t.Parallel()
+	db := mocks.NewPool(t)
+	ctx := context.Background()
+
+	total := 3
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total*10, time.Millisecond))
+	require.NoError(t, err)
+
+	tx := mocks.NewPGXTx(t)
+	db.On("Begin", mock.Anything).Return(tx, nil).
+		Times(total)
+	tx.On("Rollback", mock.Anything).Return(nil).Times(total)
+
+	calls := 0
+	err = tr.Transaction(ctx, func(pgx.Tx) error {
+		calls++
+		if calls >= total {
+			return &retry.StopError{Err: assert.AnError}
+		}
+		return errors.New(randomString(10))
+	})
+	assert.ErrorIs(t, err, assert.AnError)
+	assert.Equal(t, total, calls)
+}
+
 func testPGXTransactionRetrySuccess(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total*10))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total*10, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -389,18 +382,17 @@ func testPGXTransactionRetrySuccess(t *testing.T) {
 		}
 		return assert.AnError
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, total, calls)
 }
 
 func testPGXTransactionMultipleFunctions(t *testing.T) {
 	t.Parallel()
 	db := mocks.NewPool(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	total := 4
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(total*10))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(total*10, time.Millisecond))
 	require.NoError(t, err)
 
 	tx := mocks.NewPGXTx(t)
@@ -433,15 +425,14 @@ func testPGXTransactionRealDatabase(t *testing.T) {
 	if testing.Short() {
 		t.Skip("slow test")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 	addr := getDB(t)
 	config, err := pgxpool.ParseConfig(addr)
 	require.NoError(t, err)
-	db, err := pgxpool.ConnectConfig(ctx, config)
+	db, err := pgxpool.NewWithConfig(ctx, config)
 	require.NoError(t, err)
 
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(10))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(10, time.Millisecond))
 	require.NoError(t, err)
 
 	names := []string{
@@ -488,10 +479,10 @@ func testPGXTransactionContextCancelled(t *testing.T) {
 	addr := getDB(t)
 	config, err := pgxpool.ParseConfig(addr)
 	require.NoError(t, err)
-	db, err := pgxpool.ConnectConfig(ctx, config)
+	db, err := pgxpool.NewWithConfig(ctx, config)
 	require.NoError(t, err)
 
-	tr, err := dbtools.NewPGX(db, dbtools.RetryCount(10))
+	tr, err := dbtools.NewPGX(db, dbtools.Retry(10, time.Millisecond))
 	require.NoError(t, err)
 
 	calls := 0
@@ -511,6 +502,6 @@ func testPGXTransactionContextCancelled(t *testing.T) {
 		t.Error("didn't expect to get this")
 		return nil
 	})
-	assertInError(t, err, context.Canceled)
+	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, 1, calls)
 }

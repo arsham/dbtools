@@ -2,12 +2,13 @@ package dbtools
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"runtime/debug"
 	"time"
 
-	"github.com/arsham/retry"
-	"github.com/jackc/pgx/v4"
-	"github.com/pkg/errors"
+	"github.com/arsham/retry/v2"
+	"github.com/jackc/pgx/v5"
 )
 
 // PGX is a concurrent-safe object that can retry a transaction on a
@@ -28,8 +29,9 @@ import (
 // Any panic in functions will be wrapped in an error and will be counted as an
 // error.
 type PGX struct {
-	pool Pool
-	loop retry.Retry
+	pool        Pool
+	loop        retry.Retry
+	gracePeriod time.Duration
 }
 
 // NewPGX returns an error if conn is nil. It sets the retry attempts to 1 if
@@ -41,7 +43,13 @@ func NewPGX(conn Pool, conf ...ConfigFunc) (*PGX, error) {
 		return nil, ErrEmptyDatabase
 	}
 	t := &PGX{
-		pool: conn,
+		pool:        conn,
+		gracePeriod: 30 * time.Second,
+		loop: retry.Retry{
+			Attempts: 1,
+			Delay:    300 * time.Millisecond,
+			Method:   retry.IncrementalDelay,
+		},
 	}
 	for _, fn := range conf {
 		fn(t)
@@ -69,16 +77,13 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 	return p.loop.Do(func() error {
 		tx, err := p.pool.Begin(ctx)
 		if err != nil {
-			return errors.Wrap(err, "starting transaction")
+			return fmt.Errorf("starting transaction: %w", err)
 		}
 
 		for _, fn := range fns {
 			select {
 			case <-ctx.Done():
-				err := &trError{err: ctx.Err()}
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				err.rollback = tx.Rollback(ctx)
-				cancel()
+				err := p.rollbackWithErr(tx, ctx.Err())
 				return &retry.StopError{Err: err}
 			default:
 			}
@@ -87,7 +92,13 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						err = errors.Wrapf(errPanic, "%v\n%s", r, debug.Stack())
+						switch e := r.(type) {
+						case error:
+							err = e
+						default:
+							err = fmt.Errorf("%v", e)
+						}
+						err = fmt.Errorf("%w: %w\n%s", errPanic, err, debug.Stack())
 					}
 				}()
 				err = fn(tx)
@@ -98,14 +109,23 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 			}
 			if errors.Is(err, context.Canceled) {
 				err = &retry.StopError{Err: err}
-				ctx = context.Background()
 			}
-			if err != nil {
-				err := &trError{err: err}
-				err.rollback = tx.Rollback(ctx)
-				return err
-			}
+			return p.rollbackWithErr(tx, err)
 		}
-		return errors.Wrap(tx.Commit(ctx), "committing transaction")
+		err = tx.Commit(ctx)
+		if err != nil {
+			return fmt.Errorf("committing transaction: %w", err)
+		}
+		return nil
 	})
+}
+
+func (p *PGX) rollbackWithErr(tx pgx.Tx, err error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), p.gracePeriod)
+	defer cancel()
+	er := tx.Rollback(ctx)
+	if er != nil {
+		er = fmt.Errorf("rolling back transaction: %w", er)
+	}
+	return errors.Join(er, err)
 }

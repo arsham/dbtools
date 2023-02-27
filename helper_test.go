@@ -2,20 +2,20 @@ package dbtools_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/arsham/dbtools/v2/mocks"
-	"github.com/jackc/pgx/v4"
-	"github.com/pkg/errors"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/arsham/dbtools/v3/mocks"
 )
 
 // assertInError returns true if the needle is found in stack, which is created
@@ -33,10 +33,6 @@ func assertInError(t *testing.T, haystack, needle error) bool {
 	return assert.Containsf(t, haystack.Error(), needle.Error(),
 		"want\n\t%v\nin\n\t%v", needle, haystack,
 	)
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
 }
 
 func randomString(count int) string {

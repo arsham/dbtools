@@ -109,6 +109,7 @@ run:
 
 linters:
   enable:
+    - asasalint
     - bidichk
     - bodyclose
     - cyclop
@@ -119,20 +120,25 @@ linters:
     - errcheck
     - errname
     - errorlint
+    - execinquery
     - exportloopref
     - forcetypeassert
+    - gocheckcompilerdirectives
     - gocognit
     - goconst
     - gocritic
     - gocyclo
     - godot
+    - godox
     - gofmt
     - gofumpt
     - goprintffuncname
     - gosec
     - gosimple
     - govet
+    - grouper
     - ineffassign
+    - maintidx
     - misspell
     - nakedret
     - nestif

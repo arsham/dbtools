@@ -5,11 +5,11 @@ package dbtools
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
-	"github.com/arsham/retry"
-	"github.com/jackc/pgx/v4"
-	"github.com/pkg/errors"
+	"github.com/arsham/retry/v2"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -55,51 +55,27 @@ type Tx interface {
 // A ConfigFunc function sets up a Transaction.
 type ConfigFunc func(*PGX)
 
-// Retry sets the retrier.
-func Retry(r retry.Retry) ConfigFunc {
-	return func(t *PGX) {
-		t.loop = r
+// WithRetry sets the retrier. The default retrier tries only once.
+func WithRetry(r retry.Retry) ConfigFunc {
+	return func(p *PGX) {
+		p.loop = r
 	}
 }
 
-// RetryCount defines a transaction should be tried n times. If n is 0, it will
-// be set as 1.
-func RetryCount(n int) ConfigFunc {
-	return func(t *PGX) {
-		t.loop.Attempts = n
+// Retry sets the retry strategy. If you want to pass a Retry object you can
+// use the WithRetry function instead.
+func Retry(attempts int, delay time.Duration) ConfigFunc {
+	return func(p *PGX) {
+		p.loop.Attempts = attempts
+		p.loop.Delay = delay
 	}
 }
 
-// RetryDelay is the amount of delay between each unsuccessful tries. Set
-// DelayMethod for the method of delay duration.
-func RetryDelay(d time.Duration) ConfigFunc {
-	return func(t *PGX) {
-		t.loop.Delay = d
+// GracePeriod sets the context timeout when doing a rollback. This context
+// needs to be different from the context user is giving as the user's context
+// might be cancelled. The default value is 30s.
+func GracePeriod(delay time.Duration) ConfigFunc {
+	return func(p *PGX) {
+		p.gracePeriod = delay
 	}
-}
-
-// DelayMethod decides how to delay between each tries. Default is
-// retry.StandardDelay.
-func DelayMethod(m retry.DelayMethod) ConfigFunc {
-	return func(t *PGX) {
-		t.loop.Method = m
-	}
-}
-
-// trError is used for managing situations that an error is reported from the
-// transaction, and the rollback would result in an error.
-type trError struct {
-	err      error
-	rollback error
-}
-
-func (t *trError) Error() string {
-	return t.Unwrap().Error()
-}
-
-func (t *trError) Unwrap() error {
-	if t.rollback == nil {
-		return t.err
-	}
-	return errors.Wrapf(t.err, "%v (rollback error)", t.rollback)
 }
