@@ -3,16 +3,21 @@ package dbtools_test
 import (
 	"context"
 	"errors"
+	"log"
 	"math/rand"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/arsham/dbtools/v3/mocks"
+	"github.com/arsham/retry/v3"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/pkg/ioutils"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
@@ -46,53 +51,59 @@ func randomString(count int) string {
 // The container will be removed after test is finished running.
 func getDB(t *testing.T) string {
 	t.Helper()
-	ctx := context.Background()
-	env := make(map[string]string)
-	env["POSTGRES_PASSWORD"] = "1234"
-	req := testcontainers.ContainerRequest{
-		Image:        "postgres:12-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		WaitingFor:   wait.ForListeningPort("5432/tcp"),
-		AutoRemove:   true,
-		Env:          env,
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
+	// If you faced with any issues setting up containers, comment this out:
+	testcontainers.Logger = log.New(&ioutils.NopWriter{}, "", 0)
+
+	var (
+		pgContainer *postgres.PostgresContainer
+		r           = &retry.Retry{
+			Attempts: 30,
+			Delay:    300 * time.Millisecond,
+		}
+		ctx = context.Background()
+	)
+
+	err := r.Do(func() error {
+		var (
+			containerName = "dbtools_" + randomString(50)
+			err           error
+		)
+
+		pgContainer, err = postgres.RunContainer(ctx,
+			testcontainers.WithImage("docker.io/postgres:15-alpine"),
+			testcontainers.WithHostConfigModifier(func(c *container.HostConfig) {
+				c.Memory = 256 * 1024 * 1024
+			}),
+			testcontainers.CustomizeRequestOption(func(req *testcontainers.GenericContainerRequest) error {
+				req.Name = containerName
+				return nil
+			}),
+			postgres.WithDatabase("dbtools"),
+			postgres.WithUsername("dbtools"),
+			postgres.WithPassword(randomString(20)),
+			testcontainers.WithWaitStrategy(
+				wait.ForLog("database system is ready to accept connections").
+					WithOccurrence(2).
+					WithStartupTimeout(5*time.Second)),
+		)
+		if err != nil {
+			pgContainer.Terminate(ctx)
+			return err
+		}
+		return nil
 	})
-	require.NoError(t, err)
-
-	ip, err := container.Host(ctx)
-	require.NoError(t, err)
-
-	port, err := container.MappedPort(ctx, "5432")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		container.Terminate(ctx)
+		if err := pgContainer.Terminate(ctx); err != nil {
+			log.Fatalf("failed to terminate container: %s", err)
+		}
 	})
-	return buildQueryString("postgres", "1234", "postgres", ip, port.Port())
-}
 
-// buildQueryString builds a query string.
-func buildQueryString(user, pass, dbname, host, port string) string {
-	parts := []string{}
-	if user != "" {
-		parts = append(parts, "user="+user)
-	}
-	if pass != "" {
-		parts = append(parts, "password="+pass)
-	}
-	if dbname != "" {
-		parts = append(parts, "dbname="+dbname)
-	}
-	if host != "" {
-		parts = append(parts, "host="+host)
-	}
-	if port != "" {
-		parts = append(parts, "port="+port)
-	}
-	return strings.Join(parts, " ")
+	addr, err := pgContainer.ConnectionString(ctx)
+	require.NoError(t, err)
+
+	return addr
 }
 
 type exampleConn struct{}
