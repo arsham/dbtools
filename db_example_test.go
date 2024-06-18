@@ -14,20 +14,20 @@ import (
 
 func ExampleNewPGX() {
 	// This setup tries the transaction only once.
-	dbtools.NewPGX(&exampleConn{})
+	dbtools.New(&exampleConn{})
 
 	// This setup tries 100 times until succeeds. The delay is set to 10ms and
 	// it uses the retry.IncrementalDelay method, which means every time it
 	// increments the delay between retries with a jitter to avoid thunder herd
 	// problem.
-	dbtools.NewPGX(&exampleConn{},
+	dbtools.New(&exampleConn{},
 		dbtools.Retry(10, 100*time.Millisecond),
 	)
 	// Output:
 }
 
 func ExamplePGX_Transaction() {
-	tr, err := dbtools.NewPGX(&exampleConn{})
+	tr, err := dbtools.New(&exampleConn{})
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +47,7 @@ func ExamplePGX_Transaction() {
 }
 
 func ExamplePGX_Transaction_retries() {
-	tr, err := dbtools.NewPGX(&exampleConn{}, dbtools.Retry(10, 100*time.Millisecond))
+	tr, err := dbtools.New(&exampleConn{}, dbtools.Retry(10, 100*time.Millisecond))
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +77,7 @@ func ExamplePGX_Transaction_retries() {
 func ExamplePGX_Transaction_stopTrying() {
 	// This example shows how to stop trying when we know an error is not
 	// recoverable.
-	tr, err := dbtools.NewPGX(&exampleConn{},
+	tr, err := dbtools.New(&exampleConn{},
 		dbtools.Retry(10, time.Second),
 	)
 	if err != nil {
@@ -99,7 +99,7 @@ func ExamplePGX_Transaction_stopTrying() {
 }
 
 func ExamplePGX_Transaction_panics() {
-	tr, err := dbtools.NewPGX(&exampleConn{}, dbtools.Retry(10, 100*time.Millisecond))
+	tr, err := dbtools.New(&exampleConn{}, dbtools.Retry(10, 100*time.Millisecond))
 	if err != nil {
 		panic(err)
 	}

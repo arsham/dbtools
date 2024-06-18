@@ -34,11 +34,10 @@ type PGX struct {
 	gracePeriod time.Duration
 }
 
-// NewPGX returns an error if conn is nil. It sets the retry attempts to 1 if
-// the value is less than 1. The retry strategy can be set either by providing
-// a retry.Retry method or the individual components. See the ConfigFunc
-// helpers.
-func NewPGX(conn Pool, conf ...ConfigFunc) (*PGX, error) {
+// New returns an error if conn is nil. It sets the retry attempts to 1 if the
+// value is less than 1. The retry strategy can be set either by providing a
+// retry.Retry method or the individual components. See the ConfigFunc helpers.
+func New(conn Pool, conf ...ConfigFunc) (*PGX, error) {
 	if conn == nil {
 		return nil, ErrEmptyDatabase
 	}
