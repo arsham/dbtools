@@ -134,6 +134,7 @@ linters:
     - depguard # because I don't want to write a dedicated config file.
     - err113 # There i
     - exhaustruct # I want to use zero values.
+    - gochecknoinits
     - gomnd # is been replaced by mnd.
     - interfacebloat # We need to define the Tx interface.
     - mnd # I'm not into it.

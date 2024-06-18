@@ -21,6 +21,11 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+func init() {
+	// If you faced with any issues setting up containers, comment this out:
+	testcontainers.Logger = log.New(&ioutils.NopWriter{}, "", 0)
+}
+
 // assertInError returns true if the needle is found in stack, which is created
 // either with pkg/errors help or Go's error wrap. It will fall back to
 // checking the contents of the needle.Error() is in haystack.Error().
@@ -51,8 +56,6 @@ func randomString(count int) string {
 // The container will be removed after test is finished running.
 func getDB(t *testing.T) string {
 	t.Helper()
-	// If you faced with any issues setting up containers, comment this out:
-	testcontainers.Logger = log.New(&ioutils.NopWriter{}, "", 0)
 
 	var (
 		pgContainer *postgres.PostgresContainer
