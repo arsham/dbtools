@@ -172,11 +172,13 @@ func testPGXTransactionPanic(t *testing.T) {
 		Times(total)
 
 	calls := 0
-	err = tr.Transaction(ctx, func(pgx.Tx) error {
-		calls++
-		panic(assert.AnError.Error())
+	assert.NotPanics(t, func() {
+		err = tr.Transaction(ctx, func(pgx.Tx) error {
+			calls++
+			panic(assert.AnError.Error())
+		})
+		assertInError(t, err, assert.AnError)
 	})
-	assertInError(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 
@@ -267,11 +269,15 @@ func testPGXTransactionRollbackError(t *testing.T) {
 		Times(total)
 
 	calls := 0
-	err = tr.Transaction(ctx, func(pgx.Tx) error {
-		calls++
-		panic(randomString(10))
+	msg := randomString(20)
+	assert.NotPanics(t, func() {
+		err = tr.Transaction(ctx, func(pgx.Tx) error {
+			calls++
+			panic(msg)
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), msg)
 	})
-	require.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 

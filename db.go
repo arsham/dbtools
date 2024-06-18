@@ -2,9 +2,7 @@ package dbtools
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"runtime/debug"
 	"time"
 
 	"github.com/arsham/retry/v3"
@@ -68,7 +66,8 @@ func New(conn Pool, conf ...ConfigFunc) (*PGX, error) {
 // try any of the fns panics, it puts the stack trace of the panic in the error
 // and returns.
 //
-// It stops retrying if any of the errors are wrapped in a *retry.StopError.
+// It stops retrying if any of the errors are wrapped in a *retry.StopError or
+// when the context is cancelled.
 func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error {
 	if p.pool == nil {
 		return ErrEmptyDatabase
@@ -81,24 +80,14 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 		}
 
 		for _, fn := range fns {
-			select {
-			case <-ctx.Done():
-				err := p.rollbackWithErr(tx, ctx.Err())
-
-				return &retry.StopError{Err: err}
-			default:
-			}
-
 			var err error
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						switch x := r.(type) {
-						case error:
-							err = fmt.Errorf("%w: %w\n%s", errPanic, x, debug.Stack())
-						default:
-							err = fmt.Errorf("%w: %s\n%s", errPanic, r, debug.Stack())
-						}
+						// In this case we want to rollback and panic so the
+						// retry library can handle it.
+						err = fmt.Errorf("%v", r)
+						panic(p.rollbackWithErr(tx, err))
 					}
 				}()
 				err = fn(tx)
@@ -107,14 +96,11 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 			if err == nil {
 				continue
 			}
-			if errors.Is(err, context.Canceled) {
-				err = &retry.StopError{Err: err}
-			}
 
 			return p.rollbackWithErr(tx, err)
 		}
-		err = tx.Commit(ctx)
-		if err != nil {
+
+		if err := tx.Commit(ctx); err != nil {
 			return fmt.Errorf("committing transaction: %w", err)
 		}
 
@@ -125,10 +111,10 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 func (p *PGX) rollbackWithErr(tx pgx.Tx, err error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), p.gracePeriod)
 	defer cancel()
-	er := tx.Rollback(ctx)
-	if er != nil {
-		er = fmt.Errorf("rolling back transaction: %w", er)
+	if er := tx.Rollback(ctx); er != nil {
+		//nolint:wrapcheck // false positive.
+		return fmt.Errorf("(rolling back transaction: %w): %w", er, err)
 	}
 
-	return errors.Join(er, err)
+	return err
 }

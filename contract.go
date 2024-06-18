@@ -12,12 +12,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-var (
-	// ErrEmptyDatabase is returned when no database connection is set.
-	ErrEmptyDatabase = errors.New("no database connection is set")
-
-	errPanic = errors.New("function caused a panic")
-)
+// ErrEmptyDatabase is returned when no database connection is set.
+var ErrEmptyDatabase = errors.New("no database connection is set")
 
 // Pool is the contract for beginning a transaction with a pgxpool db
 // connection.
