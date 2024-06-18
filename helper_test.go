@@ -3,19 +3,17 @@ package dbtools_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
 
+	"github.com/arsham/dbtools/v3/mocks"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-
-	"github.com/arsham/dbtools/v3/mocks"
 )
 
 // assertInError returns true if the needle is found in stack, which is created
@@ -46,7 +44,7 @@ func randomString(count int) string {
 
 // getDB returns an address to a running postgres database inside a container.
 // The container will be removed after test is finished running.
-func getDB(t *testing.T) (addr string) {
+func getDB(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
 	env := make(map[string]string)
@@ -80,19 +78,19 @@ func getDB(t *testing.T) (addr string) {
 func buildQueryString(user, pass, dbname, host, port string) string {
 	parts := []string{}
 	if user != "" {
-		parts = append(parts, fmt.Sprintf("user=%s", user))
+		parts = append(parts, "user="+user)
 	}
 	if pass != "" {
-		parts = append(parts, fmt.Sprintf("password=%s", pass))
+		parts = append(parts, "password="+pass)
 	}
 	if dbname != "" {
-		parts = append(parts, fmt.Sprintf("dbname=%s", dbname))
+		parts = append(parts, "dbname="+dbname)
 	}
 	if host != "" {
-		parts = append(parts, fmt.Sprintf("host=%s", host))
+		parts = append(parts, "host="+host)
 	}
 	if port != "" {
-		parts = append(parts, fmt.Sprintf("port=%s", port))
+		parts = append(parts, "port="+port)
 	}
 	return strings.Join(parts, " ")
 }

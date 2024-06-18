@@ -6,15 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arsham/retry/v2"
+	"github.com/arsham/dbtools/v3"
+	"github.com/arsham/dbtools/v3/mocks"
+	"github.com/arsham/retry/v3"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/arsham/dbtools/v3"
-	"github.com/arsham/dbtools/v3/mocks"
 )
 
 func TestNewPGX(t *testing.T) {
@@ -31,7 +30,6 @@ func TestNewPGX(t *testing.T) {
 		"defaults":     {db, nil, nil},
 	}
 	for name, tc := range tcs {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			_, err := dbtools.NewPGX(tc.db, tc.conf...)
@@ -118,13 +116,13 @@ func testPGXTransactionCancelledContextFirstFunction(t *testing.T) {
 	err = tr.Transaction(ctx, func(pgx.Tx) error {
 		calls++
 		// retry package stops it.
-		if calls >= total-1 {
+		if calls >= total {
 			cancel()
 		}
 		return assert.AnError
 	})
-	assert.ErrorIs(t, err, context.Canceled)
-	assert.Equal(t, total-1, calls)
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Equal(t, total, calls)
 }
 
 func testPGXTransactionCancelledContextSecondFunction(t *testing.T) {
@@ -154,7 +152,7 @@ func testPGXTransactionCancelledContextSecondFunction(t *testing.T) {
 	}, func(pgx.Tx) error {
 		return assert.AnError
 	})
-	assert.ErrorIs(t, err, context.Canceled)
+	require.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, total, calls)
 }
 
@@ -208,7 +206,7 @@ func testPGXTransactionAnErrorNoRollbackError(t *testing.T) {
 		calls++
 		return assert.AnError
 	})
-	assert.ErrorIs(t, err, assert.AnError)
+	require.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 
@@ -231,7 +229,7 @@ func testPGXTransactionAnErrorWithRollbackError(t *testing.T) {
 	err = tr.Transaction(ctx, func(pgx.Tx) error {
 		return trError
 	})
-	assert.ErrorIs(t, err, trError)
+	require.ErrorIs(t, err, trError)
 	assert.ErrorIs(t, err, rollbackError)
 }
 
@@ -250,7 +248,7 @@ func testPGXTransactionErrorIs(t *testing.T) {
 	err = tr.Transaction(ctx, func(pgx.Tx) error {
 		return &retry.StopError{Err: assert.AnError}
 	})
-	assert.True(t, errors.Is(err, assert.AnError))
+	assert.ErrorIs(t, err, assert.AnError)
 }
 
 func testPGXTransactionRollbackError(t *testing.T) {
@@ -273,7 +271,7 @@ func testPGXTransactionRollbackError(t *testing.T) {
 		calls++
 		panic(randomString(10))
 	})
-	assert.ErrorIs(t, err, assert.AnError)
+	require.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 
@@ -297,7 +295,7 @@ func testPGXTransactionCommitError(t *testing.T) {
 		calls++
 		return nil
 	})
-	assert.ErrorIs(t, err, assert.AnError)
+	require.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 
@@ -355,7 +353,7 @@ func testPGXTransactionShortStopWithPointer(t *testing.T) {
 		}
 		return errors.New(randomString(10))
 	})
-	assert.ErrorIs(t, err, assert.AnError)
+	require.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, total, calls)
 }
 
@@ -415,7 +413,7 @@ func testPGXTransactionMultipleFunctions(t *testing.T) {
 		}
 		return assert.AnError
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, total+2, callsFn1, "expected three turns")
 	assert.Equal(t, 3, callsFn2)
 }
@@ -502,6 +500,6 @@ func testPGXTransactionContextCancelled(t *testing.T) {
 		t.Error("didn't expect to get this")
 		return nil
 	})
-	assert.ErrorIs(t, err, context.Canceled)
+	require.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, 1, calls)
 }

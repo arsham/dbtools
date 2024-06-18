@@ -6,11 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arsham/retry/v2"
+	"github.com/arsham/dbtools/v3"
+	"github.com/arsham/retry/v3"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/arsham/dbtools/v3"
 )
 
 func ExampleNewPGX() {
@@ -24,6 +23,7 @@ func ExampleNewPGX() {
 	dbtools.NewPGX(&exampleConn{},
 		dbtools.Retry(10, 100*time.Millisecond),
 	)
+	// Output:
 }
 
 func ExamplePGX_Transaction() {

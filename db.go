@@ -7,7 +7,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/arsham/retry/v2"
+	"github.com/arsham/retry/v3"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -42,7 +42,7 @@ func NewPGX(conn Pool, conf ...ConfigFunc) (*PGX, error) {
 	if conn == nil {
 		return nil, ErrEmptyDatabase
 	}
-	t := &PGX{
+	obj := &PGX{
 		pool:        conn,
 		gracePeriod: 30 * time.Second,
 		loop: retry.Retry{
@@ -52,12 +52,13 @@ func NewPGX(conn Pool, conf ...ConfigFunc) (*PGX, error) {
 		},
 	}
 	for _, fn := range conf {
-		fn(t)
+		fn(obj)
 	}
-	if t.loop.Attempts < 1 {
-		t.loop.Attempts = 1
+	if obj.loop.Attempts < 1 {
+		obj.loop.Attempts = 1
 	}
-	return t, nil
+
+	return obj, nil
 }
 
 // Transaction returns an error if the connection is not set, or can't begin
@@ -74,7 +75,7 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 		return ErrEmptyDatabase
 	}
 
-	return p.loop.Do(func() error {
+	return p.loop.DoContext(ctx, func() error {
 		tx, err := p.pool.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("starting transaction: %w", err)
@@ -84,6 +85,7 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 			select {
 			case <-ctx.Done():
 				err := p.rollbackWithErr(tx, ctx.Err())
+
 				return &retry.StopError{Err: err}
 			default:
 			}
@@ -92,13 +94,12 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						switch e := r.(type) {
+						switch x := r.(type) {
 						case error:
-							err = e
+							err = fmt.Errorf("%w: %w\n%s", errPanic, x, debug.Stack())
 						default:
-							err = fmt.Errorf("%v", e)
+							err = fmt.Errorf("%w: %s\n%s", errPanic, r, debug.Stack())
 						}
-						err = fmt.Errorf("%w: %w\n%s", errPanic, err, debug.Stack())
 					}
 				}()
 				err = fn(tx)
@@ -110,12 +111,14 @@ func (p *PGX) Transaction(ctx context.Context, fns ...func(pgx.Tx) error) error 
 			if errors.Is(err, context.Canceled) {
 				err = &retry.StopError{Err: err}
 			}
+
 			return p.rollbackWithErr(tx, err)
 		}
 		err = tx.Commit(ctx)
 		if err != nil {
 			return fmt.Errorf("committing transaction: %w", err)
 		}
+
 		return nil
 	})
 }
@@ -127,5 +130,6 @@ func (p *PGX) rollbackWithErr(tx pgx.Tx, err error) error {
 	if er != nil {
 		er = fmt.Errorf("rolling back transaction: %w", er)
 	}
+
 	return errors.Join(er, err)
 }

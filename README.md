@@ -12,7 +12,13 @@ they succeed and handles errors in a developer friendly way. There are helpers
 for using with [go-sqlmock][go-sqlmock] in tests. There is also a `Mocha`
 inspired reporter for [spec BDD library][spec].
 
-This library supports `Go >= 1.20`. To use this library use this import path:
+This library supports `Go >= 1.22`. To use this library use this import path:
+
+```
+github.com/arsham/dbtools/v4
+```
+
+For Go >= 1.20 support use the v3:
 
 ```
 github.com/arsham/dbtools/v3

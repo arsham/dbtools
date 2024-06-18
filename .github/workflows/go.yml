@@ -21,25 +21,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ["1.20"]
+        go: ["1.22"]
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
-
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go }}
 
       - name: Running Tests
         run: make ci_tests
@@ -56,14 +47,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ["1.20"]
+        go: ["1.22"]
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
 
@@ -82,18 +73,18 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ["1.20"]
+        go: ["1.22"]
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v5
         with:
           args: --timeout 5m0s

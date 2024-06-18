@@ -8,11 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/arsham/dbtools/v3/dbtesting"
 	"github.com/sclevine/spec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/arsham/dbtools/v3/dbtesting"
 )
 
 func TestTerminal(t *testing.T) {
@@ -76,7 +75,6 @@ func testTerminalStartBuffer(t *testing.T) {
 		},
 	}
 	for name, tc := range tcs {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			buf := &bytes.Buffer{}
 			m := &dbtesting.Mocha{
@@ -125,7 +123,6 @@ func testTerminalSpecs(t *testing.T) {
 		"skipped": "skipped: 4",
 	}
 	for name, tc := range tcs {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			assert.Contains(t, content, tc)
 		})

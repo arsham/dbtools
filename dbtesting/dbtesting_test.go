@@ -5,10 +5,9 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/arsham/dbtools/v3/dbtesting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/arsham/dbtools/v3/dbtesting"
 )
 
 func TestOkValue(t *testing.T) {
@@ -21,7 +20,6 @@ func TestOkValue(t *testing.T) {
 		"byte slice": []byte("devil"),
 	}
 	for name, tc := range tcs {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			db, mock, err := sqlmock.New()
@@ -163,7 +161,7 @@ func testValueRecorderValue(t *testing.T) {
 	_, err = db.Exec("query", val)
 	require.NoError(t, err)
 	got := rec.Value("satan")
-	assert.Equal(t, val, got)
+	assert.InDelta(t, val, got, 0)
 }
 
 func testValueRecorderValuePanic(t *testing.T) {

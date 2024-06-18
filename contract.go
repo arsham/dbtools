@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/arsham/retry/v2"
+	"github.com/arsham/retry/v3"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -27,8 +27,7 @@ type Pool interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
-// nolint:unused,deadcode // only used for mocking.
-//
+//nolint:unused,deadcode // only used for mocking.
 //go:generate mockery --name pgxTx --filename pgx_tx_mock.go --structname PGXTx
 type pgxTx interface {
 	pgx.Tx
