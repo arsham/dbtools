@@ -236,7 +236,7 @@ Your tests can be checked easily like this:
 ```go
 import (
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/arsham/dbtools/v3/dbtesting"
+	"github.com/arsham/dbtools/v4/dbtesting"
 )
 
 func TestFoo(t *testing.T) {
@@ -275,7 +275,7 @@ relevant to the current test), you can use `OkValue`.
 
 ```go
 import (
-    "github.com/arsham/dbtools/v3/dbtesting"
+    "github.com/arsham/dbtools/v4/dbtesting"
     "github.com/DATA-DOG/go-sqlmock"
 )
 
@@ -300,7 +300,7 @@ mock.ExpectExec("INSERT INTO life .+").
 ### Usage
 
 ```go
-import "github.com/arsham/dbtools/v3/dbtesting"
+import "github.com/arsham/dbtools/v4/dbtesting"
 
 func TestFoo(t *testing.T) {
 	spec.Run(t, "Foo", func(t *testing.T, when spec.G, it spec.S) {

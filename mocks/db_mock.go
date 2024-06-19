@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	dbtools "github.com/arsham/dbtools/v3"
+	dbtools "github.com/arsham/dbtools/v4"
 	mock "github.com/stretchr/testify/mock"
 
 	sql "database/sql"

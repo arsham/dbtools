@@ -1,4 +1,4 @@
-module github.com/arsham/dbtools/v3
+module github.com/arsham/dbtools/v4
 
 go 1.22.0
 

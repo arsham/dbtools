@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arsham/dbtools/v3"
-	"github.com/arsham/dbtools/v3/mocks"
+	"github.com/arsham/dbtools/v4"
+	"github.com/arsham/dbtools/v4/mocks"
 	"github.com/arsham/retry/v3"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
