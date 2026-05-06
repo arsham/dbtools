@@ -12,7 +12,7 @@ they succeed and handles errors in a developer friendly way. There are helpers
 for using with [go-sqlmock][go-sqlmock] in tests. There is also a `Mocha`
 inspired reporter for [spec BDD library][spec].
 
-This library supports `Go >= 1.22`. To use this library use this import path:
+This library supports `Go >= 1.26`. To use this library use this import path:
 
 ```
 github.com/arsham/dbtools/v4
@@ -74,7 +74,7 @@ You will write:
 
 ```go
 // for using with pgx connections:
-p, err := dbtools.NewPGX(conn)
+p, err := dbtools.New(conn)
 // handle the error!
 return p.Transaction(ctx, firstQueryCall, secondQueryCall, thirdQueryCall)
 ```
@@ -103,7 +103,7 @@ time until your queries succeed:
 
 ```go
 // conn is a *pgxpool.Pool instance
-p, err := dbtools.NewPGX(conn, dbtools.Retry(20))
+p, err := dbtools.New(conn, dbtools.Retry(20))
 // handle the error
 err = p.Transaction(ctx, func(tx pgx.Tx) error {
 	// use tx to run your queries

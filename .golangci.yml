@@ -1,141 +1,145 @@
-linters-settings:
-  funlen:
-    lines: 100
-    statements: 50
-
-  cyclop:
-    skip-tests: true
-    max-complexity: 30
-    package-average: 5
-
-  gocyclo:
-    min-complexity: 15
-
-  goconst:
-    min-len: 2
-    min-occurrences: 3
-
-  gocritic:
-    enable-all: true
-
-  godot:
-    capital: true
-
-  gosimple:
-    checks: ["all"]
-
-  govet:
-    enable:
-      - assign
-      - atomic
-      - atomicalign
-      - bools
-      - buildtag
-      - cgocall
-      - composites
-      - copylocks
-      - deepequalerrors
-      - errorsas
-      - fieldalignment
-      - findcall
-      - framepointer
-      - httpresponse
-      - ifaceassert
-      - loopclosure
-      - lostcancel
-      - nilfunc
-      - printf
-      - reflectvaluecompare
-      - shift
-      - sigchanyzer
-      - sortslice
-      - stdmethods
-      - stringintconv
-      - structtag
-      - testinggoroutine
-      - tests
-      - unmarshal
-      - unreachable
-      - unsafeptr
-      - unusedresult
-
-  misspell:
-    locale: UK
-
-  staticcheck:
-    checks: ["all"]
-
-  stylecheck:
-    checks: ["all"]
-
-  unparam:
-    check-exported: true
-
-  varnamelen:
-    ignore-decls:
-      - t testing.T
-      - tx pgx.Tx
-      - fn func(pgx.Tx) error
-
-  paralleltest:
-    ignore-missing-subtests: true
-
-  wrapcheck:
-    ignoreSigs:
-      - errors.Join
-      - retry/v3.Retry).Do
-      - retry/v3.Retry).DoContext
-
-issues:
-  # Excluding configuration per-path, per-linter, per-text and per-source
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - dupl # we usualy duplicate code in tests
-        - errcheck
-        - forcetypeassert
-        - gocritic # we don't care for most of these lint errors in tests
-        - gosec # security check is not important in tests
-        - govet
-        - ireturn
-        - nlreturn # is ok in tests.
-        - unparam
-        - varnamelen # is ok in tests.
-        - wrapcheck
-    - path: dbtesting/dbtesting\.go
-      linters:
-        - gochecknoglobals
-        - ireturn
-        - nlreturn # is ok in tests.
-        - varnamelen
-    - path: dbtesting/mocha\.go
-      linters:
-        - errcheck
-        - ireturn
-        - varnamelen
-  fix: true
-  exclude-use-default: false
-  exclude-dirs:
-    - tmp
-    - bin
-    - scripts
-
+version: "2"
 run:
-  timeout: 5m
-  allow-parallel-runners: true
-  tests: true
   build-tags:
     - integration
-
+  tests: true
+  allow-parallel-runners: true
 linters:
-  enable-all: true
+  default: all
   disable:
-    - contextcheck # There is one instance and it requires a fresh context.
-    - depguard # because I don't want to write a dedicated config file.
-    - err113 # There i
-    - exhaustruct # I want to use zero values.
+    - contextcheck
+    - depguard
+    - err113
+    - exhaustruct
+    - funcorder
     - gochecknoinits
-    - gomnd # is been replaced by mnd.
-    - interfacebloat # We need to define the Tx interface.
-    - mnd # I'm not into it.
-    - wsl # Too restrictive for this project.
+    - gomodguard
+    - interfacebloat
+    - mnd
+    - noinlineerr
+    - wsl
+    - wsl_v5
+  settings:
+    cyclop:
+      max-complexity: 30
+      package-average: 5
+    funlen:
+      lines: 100
+      statements: 50
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enable-all: true
+    gocyclo:
+      min-complexity: 15
+    godot:
+      capital: true
+    govet:
+      enable:
+        - assign
+        - atomic
+        - atomicalign
+        - bools
+        - buildtag
+        - cgocall
+        - composites
+        - copylocks
+        - deepequalerrors
+        - errorsas
+        - fieldalignment
+        - findcall
+        - framepointer
+        - httpresponse
+        - ifaceassert
+        - loopclosure
+        - lostcancel
+        - nilfunc
+        - printf
+        - reflectvaluecompare
+        - shift
+        - sigchanyzer
+        - sortslice
+        - stdmethods
+        - stringintconv
+        - structtag
+        - testinggoroutine
+        - tests
+        - unmarshal
+        - unreachable
+        - unsafeptr
+        - unusedresult
+    misspell:
+      locale: UK
+    paralleltest:
+      ignore-missing-subtests: true
+    staticcheck:
+      checks:
+        - all
+    unparam:
+      check-exported: true
+    varnamelen:
+      ignore-decls:
+        - t testing.T
+        - tx pgx.Tx
+        - fn func(pgx.Tx) error
+    wrapcheck:
+      ignore-sigs:
+        - errors.Join
+        - retry/v3.Retry).Do
+        - retry/v3.Retry).DoContext
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - dupl
+          - errcheck
+          - forcetypeassert
+          - goconst
+          - gocritic
+          - gosec
+          - govet
+          - ireturn
+          - nlreturn
+          - unparam
+          - varnamelen
+          - wrapcheck
+        path: _test\.go
+      - linters:
+          - gochecknoglobals
+          - ireturn
+          - nlreturn
+          - varnamelen
+        path: dbtesting/dbtesting\.go
+      - linters:
+          - errcheck
+          - ireturn
+          - varnamelen
+        path: dbtesting/mocha\.go
+      - linters:
+          - cyclop
+        path: (.+)_test\.go
+    paths:
+      - tmp
+      - bin
+      - scripts
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  fix: true
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - tmp
+      - bin
+      - scripts
+      - third_party$
+      - builtin$
+      - examples$

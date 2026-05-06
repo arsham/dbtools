@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func ExampleNewPGX() {
+func ExampleNew() {
 	// This setup tries the transaction only once.
 	dbtools.New(&exampleConn{})
 

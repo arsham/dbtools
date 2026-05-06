@@ -3,6 +3,7 @@ package dbtools_test
 import (
 	"context"
 	"errors"
+	"io"
 	"log"
 	"math/rand"
 	"testing"
@@ -10,20 +11,20 @@ import (
 
 	"github.com/arsham/dbtools/v4/mocks"
 	"github.com/arsham/retry/v3"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/pkg/ioutils"
 	"github.com/jackc/pgx/v5"
+	"github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	tclog "github.com/testcontainers/testcontainers-go/log"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func init() {
-	// If you faced with any issues setting up containers, comment this out:
-	testcontainers.Logger = log.New(&ioutils.NopWriter{}, "", 0)
+	// If you face issues setting up containers, comment this out:
+	tclog.SetDefault(log.New(io.Discard, "", 0))
 }
 
 // assertInError returns true if the needle is found in stack, which is created
@@ -72,8 +73,9 @@ func getDB(t *testing.T) string {
 			err           error
 		)
 
-		pgContainer, err = postgres.RunContainer(ctx,
-			testcontainers.WithImage("docker.io/postgres:15-alpine"),
+		pgContainer, err = postgres.Run(ctx,
+			"docker.io/postgres:15-alpine",
+			testcontainers.WithLogger(log.New(io.Discard, "", 0)),
 			testcontainers.WithHostConfigModifier(func(c *container.HostConfig) {
 				c.Memory = 256 * 1024 * 1024
 			}),
